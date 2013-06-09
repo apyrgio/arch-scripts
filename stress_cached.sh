@@ -88,96 +88,100 @@ if [[ $CLEAN ]]; then exit; fi
 
 create_seed $SEED
 
-BENCH_COMMAND='bench -g posix:apyrgio: -p ${P} -tp 0
-			-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
-			-ts ${BENCH_SIZE} --progress yes --iodepth ${IODEPTH} --verify no
-			-l /var/log/stress_cached/bench${I}.log'
+BENCH_COMMAND='bench -g posix:cached: -p ${P} -tp 0
+		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
+		-ts ${BENCH_SIZE} --progress yes --iodepth ${IODEPTH}
+		--verify meta ${RC} -l /var/log/stress_cached/bench${I}.log'
 
-CACHED_COMMAND='cached -g posix:apyrgio: -p 1 -bp 0 -t ${T_CACHED}
-			-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -cs ${CACHE_SIZE}
-			-l /var/log/stress_cached/cached${I}.log'
+CACHED_COMMAND='cached -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
+		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -mo ${CACHE_OBJECTS}
+		-ts ${CACHE_SIZE}
+		-l /var/log/stress_cached/cached${I}.log'
 
-MT_PFILED_COMMAND='mt-pfiled -g posix:apyrgio: -p 0 -t ${T_MTPF} -v ${VERBOSITY}
-			--pithos /tmp/pithos1/ --archip /tmp/pithos2/
-			-l /var/log/stress_cached/mt-pfiled${I}.log'
+MT_PFILED_COMMAND='mt-pfiled -g posix:cached: -p 0 -t ${T_MTPF} -v ${VERBOSITY}
+		--pithos /tmp/pithos1/ --archip /tmp/pithos2/
+		-l /var/log/stress_cached/mt-pfiled${I}.log'
 
 #############
 # Main loop #
 #############
 
-#set -e  #exit on error
-for CACHE_SIZE in 4 16 64 512; do
-	for WCP in writeback writethrough; do
-		for IODEPTH in 1 16; do
-			for THREADS in single multi; do
-				for BENCH_SIZE in '1/2' '1+1/2' '2+1/2'; do
-					# Check if user has asked to fast-forward or run a specific
-					# test
-					I=$(( $I+1 ))
+for WCP in writeback writethrough; do
+for CACHE_OBJECTS in 4 16 64 512; do
+for CACHE_SIZE in 2x 1.5x 1x 0.5x; do
+for IODEPTH in 1 16; do
+for THREADS in single multi; do
+for BENCH_OBJECTS in bounded holyshit; do
+for BENCH_SIZE in 0.25x 0.5x 1x 1.5x; do
 
-					if [[ ($UNTIL && $I -gt $ULIMIT) ]]; then exit
-					elif [[ $TEST ]]; then
-						if [[ $I -lt $TLIMIT ]]; then continue
-						elif [[ $I -gt $TLIMIT ]]; then exit
-						fi
-					elif [[ $FF ]]; then
-						if [[ $I -lt $FLIMIT ]]; then continue
-						elif [[ $I -eq $FLIMIT ]]; then FF=1
-						fi
-					fi
+	I=$(( $I+1 ))
 
-					# Make test-specific initializations
-					init_log bench${I}.log
-					init_log cached${I}.log
-					init_log mt-pfiled${I}.log
+	# Check if user has asked to fast-forward or run a specific test
+	if [[ ($UNTIL && $I -gt $ULIMIT) ]]; then exit
+	elif [[ $TEST ]]; then
+		if [[ $I -lt $TLIMIT ]]; then continue
+		elif [[ $I -gt $TLIMIT ]]; then exit
+		fi
+	elif [[ $FF ]]; then
+		if [[ $I -lt $FLIMIT ]]; then continue
+		elif [[ $I -eq $FLIMIT ]]; then FF=1
+		fi
+	fi
 
-					parse_args $THREADS $BENCH_SIZE $CACHE_SIZE
-					print_test
+	# Make test-specific initializations
+	init_log bench${I}.log
+	init_log cached${I}.log
+	init_log mt-pfiled${I}.log
 
-					if [[ $WAIT == 0 ]]; then
-						read_prompt
-						if [[ $SKIP == 0 ]]; then continue; fi
-					fi
+	parse_args $THREADS $CACHE_SIZE $BENCH_SIZE $BENCH_OBJECTS
+	print_test
 
-					# Start mt-pfiled
-					eval ${MT_PFILED_COMMAND}" &"
-					PID_MTPF=$!
+	if [[ $WAIT == 0 ]]; then
+		read_prompt
+		if [[ $SKIP == 0 ]]; then continue; fi
+	fi
 
-					# Start cached
-					eval ${CACHED_COMMAND}" &"
-					PID_CACHED=$!
-					# Wait a bit to make sure both cached and mt-pfiled is up
-					sleep 1
+	# Start mt-pfiled
+	eval ${MT_PFILED_COMMAND}" &"
+	PID_MTPF=$!
 
-					# Start bench (write mode)
-					BENCH_OP=write
-					for P in ${BENCH_PORTS}; do
-						eval ${BENCH_COMMAND}" &"
-						PID_BENCH=${PID_BENCH}" $!"
-					done
-					echo -n "Waiting for bench to finish writing... "
-					for PID in ${PID_BENCH}; do
-						wait ${PID}
-					done
-					grn_echo "DONE!"
+	# Start cached
+	eval ${CACHED_COMMAND}" &"
+	PID_CACHED=$!
+	# Wait a bit to make sure both cached and mt-pfiled is up
+	sleep 1
 
-					# Start bench (read mode)
-					BENCH_OP=read
-					for P in ${BENCH_PORTS}; do
-						eval ${BENCH_COMMAND}" &"
-						PID_BENCH=${PID_BENCH}" $!"
-					done
-					echo -n "Waiting for bench to finish reading... "
-					for PID in ${PID_BENCH}; do
-						wait ${PID}
-					done
-					grn_echo "DONE!"
-
-					# Since cached's termination has not been solved yet, we
-					# have to resort to weapons of mass destruction
-					nuke_xseg
-				done
-			done
-		done
+	# Start bench (write mode)
+	BENCH_OP=write
+	for P in ${BENCH_PORTS}; do
+		eval ${BENCH_COMMAND}" &"
+		PID_BENCH=${PID_BENCH}" $!"
 	done
+	echo -n "Waiting for bench to finish writing... "
+	for PID in ${PID_BENCH}; do
+		wait ${PID}
+	done
+	grn_echo "DONE!"
+
+	# Start bench (read mode)
+	BENCH_OP=read
+	for P in ${BENCH_PORTS}; do
+		eval ${BENCH_COMMAND}" &"
+		PID_BENCH=${PID_BENCH}" $!"
+	done
+	echo -n "Waiting for bench to finish reading... "
+	for PID in ${PID_BENCH}; do
+		wait ${PID}
+	done
+	grn_echo "DONE!"
+
+	# Since cached's termination has not been solved yet, we
+	# have to resort to weapons of mass destruction
+	nuke_xseg
+done
+done
+done
+done
+done
+done
 done

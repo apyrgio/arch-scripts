@@ -18,7 +18,7 @@ usage() {
 	echo "         -v <l>:     set verbosity level to <l>"
 	echo "         -y:         do not wait between tests"
 	echo "         -c:         just clean the segment"
-	echo "         -h:         rint this message"
+	echo "         -h:         print this message"
 	echo ""
 	echo "---------------------------------------------------------------------"
 	echo "Additional info:"
@@ -58,24 +58,29 @@ parse_args() {
 		exit
 	fi
 
-	# ${2} is for benchmark size
-	if [[ ${2} = '1/2' ]]; then
-		BENCH_SIZE=$(( ${CACHE_SIZE}/2 * 4))'M'
-	elif [[ ${2} = '1+1/2' ]]; then
-		BENCH_SIZE=$(( (${CACHE_SIZE} + (${CACHE_SIZE}/2)) * 4 ))'M'
-	elif [[ ${2} = '2+1/2' ]]; then
-		BENCH_SIZE=$(( (2*${CACHE_SIZE} + (${CACHE_SIZE}/2)) * 4 ))'M'
-	else
-		red_echo "${2} is not a valid bench size option"
-		exit
-	fi
-
-	# ${3} is for cache size and affects cached's number of ops
-	if [[ ${3} = 4 ]]; then
+	# ${2} is for cache size
+	CACHE_SIZE=$( python -c "print int(${CACHE_OBJECTS} * ${2%x} * 4)" )'M'
+	if [[ ${CACHE_OBJECTS} = 4 ]]; then
 		NR_OPS=4
 	else
 		NR_OPS=16
 	fi
+
+	# ${3} and ${4} is for bench size and request cap
+	BENCH_SIZE=$( python -c "print int(${CACHE_SIZE%M} * ${3%x})" )'M'
+	if [[ ${4} = 'bounded' ]]; then
+		RC=''
+	elif [[ ${4} = 'holyshit' ]]; then
+		local requests
+		requests=$(( ${BENCH_SIZE%M} / 4 ))'K'
+
+		RC='-rc ${BENCH_SIZE}'
+		BENCH_SIZE='999G'
+	else
+		red_echo "${4} is not a valid bench size option"
+		exit
+	fi
+
 }
 
 # Depending on the number of bench instances, we calculate what are the
@@ -144,9 +149,10 @@ create_seed() {
 #    backslash from the last line (the line with the (#) character.
 print_test() {
 	echo ""
-	grn_echo "Summary of Test ${I}:"
-	echo "WCP=${WCP} THREADS=${THREADS} IODEPTH=${IODEPTH} SEED=${SEED}"
-	echo "CACHE_SIZE=${CACHE_SIZE}($((CACHE_SIZE * 4))M) BENCH_SIZE=${BENCH_SIZE}"
+	grn_echo "Summary of Test ${I} (SEED ${SEED}):"
+	echo "WCP=${WCP} THREADS=${THREADS} IODEPTH=${IODEPTH}"
+	echo "CACHE_OBJECTS=${CACHE_OBJECTS} CACHE_SIZE=${CACHE_SIZE}"
+	echo "BENCH_OBJECTS=${BENCH_OBJECTS} BENCH_SIZE=${BENCH_SIZE}"
 	grn_echo "-------------------------------------------------------"
 
 	for P in ${BENCH_PORTS}; do
@@ -206,9 +212,9 @@ nuke_xseg() {
 	killall -9 mt-pfiled
 
 	# Re-build segment
-	xseg posix:apyrgio:16:1024:12 destroy create
+	xseg posix:cached:16:1024:12 destroy create
 	for P in $BENCH_PORTS; do
-		xseg posix:apyrgio: set-next ${P} 1
+		xseg posix:cached: set-next ${P} 1
 	done
 
 	restore_output
