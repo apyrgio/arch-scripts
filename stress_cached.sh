@@ -108,11 +108,11 @@ MT_PFILED_COMMAND='mt-pfiled -g posix:cached: -p 0 -t ${T_MTPF} -v ${VERBOSITY}
 
 for WCP in writeback writethrough; do
 for CACHE_OBJECTS in 4 16 64 512; do
-for CACHE_SIZE in 2x 1.5x 1x 0.5x; do
+for CACHE_SIZE_AMPLIFY in 2x 1.5x 1x 0.5x; do
 for IODEPTH in 1 16; do
 for THREADS in single multi; do
 for BENCH_OBJECTS in bounded holyshit; do
-for BENCH_SIZE in 0.25x 0.5x 1x 1.5x; do
+for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do
 
 	I=$(( $I+1 ))
 
@@ -133,7 +133,7 @@ for BENCH_SIZE in 0.25x 0.5x 1x 1.5x; do
 	init_log cached${I}.log
 	init_log mt-pfiled${I}.log
 
-	parse_args $THREADS $CACHE_SIZE $BENCH_SIZE $BENCH_OBJECTS
+	parse_args $THREADS $CACHE_SIZE_AMPLIFY $BENCH_SIZE_AMPLIFY $BENCH_OBJECTS
 	print_test
 
 	if [[ $WAIT == 0 ]]; then

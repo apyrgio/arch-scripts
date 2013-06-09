@@ -74,8 +74,8 @@ parse_args() {
 		local requests
 		requests=$(( ${BENCH_SIZE%M} / 4 ))'K'
 
-		RC='-rc ${BENCH_SIZE}'
-		BENCH_SIZE='999G'
+		RC="-rc ${requests}"
+		BENCH_SIZE="999G"
 	else
 		red_echo "${4} is not a valid bench size option"
 		exit
@@ -151,8 +151,10 @@ print_test() {
 	echo ""
 	grn_echo "Summary of Test ${I} (SEED ${SEED}):"
 	echo "WCP=${WCP} THREADS=${THREADS} IODEPTH=${IODEPTH}"
-	echo "CACHE_OBJECTS=${CACHE_OBJECTS} CACHE_SIZE=${CACHE_SIZE}"
-	echo "BENCH_OBJECTS=${BENCH_OBJECTS} BENCH_SIZE=${BENCH_SIZE}"
+	echo -n "CACHE_OBJECTS=${CACHE_OBJECTS} CACHE_SIZE=${CACHE_SIZE}"
+	echo "(${CACHE_SIZE_AMPLIFY})"
+	echo -n "BENCH_OBJECTS=${BENCH_OBJECTS} BENCH_SIZE=${BENCH_SIZE}"
+	echo "(${BENCH_SIZE_AMPLIFY})"
 	grn_echo "-------------------------------------------------------"
 
 	for P in ${BENCH_PORTS}; do
