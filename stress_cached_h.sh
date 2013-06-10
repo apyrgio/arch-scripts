@@ -38,7 +38,7 @@ usage() {
 	echo ""
 	echo "* An easy way to check out the output would be to start 3 terminals"
 	echo "  and simply have them do: tail -F /var/log/stress_cached/cached*"
-	echo "  (or bench*, mt-pfiled*). Thus, when a file is rm'ed or a new file"
+	echo "  (or bench*, pfiled*). Thus, when a file is rm'ed or a new file"
 	echo "  with the sam prefix has been added, tail will read it and you won't"
 	echo "  have to do anything."
 }
@@ -46,11 +46,11 @@ usage() {
 parse_args() {
 	# ${1} is for threads
 	if [[ ${1} = 'single' ]]; then
-		T_MTPF=64
+		T_PFILED=64
 		T_CACHED=1
 		T_BENCH=1
 	elif [[ ${1} = 'multi' ]]; then
-		T_MTPF=64
+		T_PFILED=64
 		T_CACHED=4
 		T_BENCH=1
 	else
@@ -165,7 +165,7 @@ print_test() {
 	eval "echo "${CACHED_COMMAND}""#"" \
 		| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
 	echo ""
-	eval "echo "${MT_PFILED_COMMAND}""#"" \
+	eval "echo "${PFILED_COMMAND}""#"" \
 		| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
 
 	grn_echo "-------------------------------------------------------"
@@ -201,7 +201,7 @@ restore_output() {
 nuke_xseg() {
 	suppress_output
 
-	# Delete mt-pfiled files
+	# Delete pfiled files
 	find /tmp/pithos1/ -name "*" -exec rm -rf {} \;
 	find /tmp/pithos2/ -name "*" -exec rm -rf {} \;
 	mkdir -p /tmp/pithos1/
@@ -209,9 +209,9 @@ nuke_xseg() {
 	mkdir -p /var/log/stress_cached/
 
 	# Clear previous tries
-	killall -9 bench
-	killall -9 cached
-	killall -9 mt-pfiled
+	killall -9 archip-bench
+	killall -9 archip-cached
+	killall -9 archip-pfiled
 
 	# Re-build segment
 	xseg posix:cached:16:1024:12 destroy create

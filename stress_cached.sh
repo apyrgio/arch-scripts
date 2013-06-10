@@ -88,19 +88,19 @@ if [[ $CLEAN ]]; then exit; fi
 
 create_seed $SEED
 
-BENCH_COMMAND='bench -g posix:cached: -p ${P} -tp 0
+BENCH_COMMAND='archip-bench -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${BENCH_SIZE} --progress yes --iodepth ${IODEPTH}
 		--verify meta ${RC} -l /var/log/stress_cached/bench${I}.log'
 
-CACHED_COMMAND='cached -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
+CACHED_COMMAND='arcip-cached -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -mo ${CACHE_OBJECTS}
 		-ts ${CACHE_SIZE}
 		-l /var/log/stress_cached/cached${I}.log'
 
-MT_PFILED_COMMAND='mt-pfiled -g posix:cached: -p 0 -t ${T_MTPF} -v ${VERBOSITY}
+PFILED_COMMAND='archip-pfiled -g posix:cached: -p 0 -t ${T_PFILED} -v ${VERBOSITY}
 		--pithos /tmp/pithos1/ --archip /tmp/pithos2/
-		-l /var/log/stress_cached/mt-pfiled${I}.log'
+		-l /var/log/stress_cached/pfiled${I}.log'
 
 #############
 # Main loop #
@@ -131,7 +131,7 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do
 	# Make test-specific initializations
 	init_log bench${I}.log
 	init_log cached${I}.log
-	init_log mt-pfiled${I}.log
+	init_log pfiled${I}.log
 
 	parse_args $THREADS $CACHE_SIZE_AMPLIFY $BENCH_SIZE_AMPLIFY $BENCH_OBJECTS
 	print_test
@@ -141,14 +141,14 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do
 		if [[ $SKIP == 0 ]]; then continue; fi
 	fi
 
-	# Start mt-pfiled
-	eval ${MT_PFILED_COMMAND}" &"
-	PID_MTPF=$!
+	# Start pfiled
+	eval ${PFILED_COMMAND}" &"
+	PID_PFILED=$!
 
 	# Start cached
 	eval ${CACHED_COMMAND}" &"
 	PID_CACHED=$!
-	# Wait a bit to make sure both cached and mt-pfiled is up
+	# Wait a bit to make sure both cached and pfiled is up
 	sleep 1
 
 	# Start bench (write mode)
