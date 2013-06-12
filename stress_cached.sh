@@ -17,6 +17,7 @@ source $ARCH_SCRIPTS/stress_cached_h.sh
 
 VERBOSITY=1
 BENCH_INSTANCES=1
+PROFILE=1
 I=0
 WAIT=0
 BENCH_OP=write
@@ -44,6 +45,10 @@ while [[ -n $1 ]]; do
 	elif [[ $1 = '-v' ]]; then
 		shift
 		VERBOSITY=$1
+	elif [[ $1 = '-p' ]]; then
+		PROFILE=0
+		shift
+		CPU_SAMPLES=$1
 	elif [[ $1 = '-y' ]]; then
 		WAIT=1
 	elif [[ $1 = '-c' ]]; then
@@ -146,10 +151,14 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do
 	PID_PFILED=$!
 
 	# Start cached
-	eval ${CACHED_COMMAND}" &"
+	if [[ $PROFILE == 0 ]]; then
+		eval "env CPUPROFILE_FREQUENCY=${CPU_SAMPLES} "${CACHED_COMMAND}" &"
+	else
+		eval ${CACHED_COMMAND}" &"
+	fi
 	PID_CACHED=$!
 	# Wait a bit to make sure both cached and pfiled is up
-	sleep 10
+	sleep 1
 
 	# Start bench (write mode)
 	BENCH_OP=write
@@ -162,6 +171,13 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do
 		wait ${PID}
 	done
 	grn_echo "DONE!"
+
+	if [[ $PROFILE == 0 ]]; then
+		killall archip-cached
+		sleep 1
+		nuke_xseg
+		continue
+	fi
 
 	# Start bench (read mode)
 	BENCH_OP=read

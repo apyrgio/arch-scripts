@@ -7,7 +7,7 @@
 usage() {
 	echo "Usage: ./stress_cached [-test <i>] [-ff <i>] [-until <i>]"
 	echo "                       [-bench <p>] [-seed <n>]"
-	echo "                       [-v <i>] [-y] [-c] [-h]"
+	echo "                       [-v <i>] [-p <n>] [-y] [-c] [-h]"
 	echo ""
 	echo "Options: -test <i>:  run only test <i>"
 	echo "         -ff <i>:    fast-forward to test <i>, run every test from "
@@ -16,6 +16,7 @@ usage() {
 	echo "         -bench <p>: define number of bench instances"
 	echo "         -seed <n>:  use <n> as a seed for the test (9-digits only)"
 	echo "         -v <l>:     set verbosity level to <l>"
+	echo "         -p <n>:     profile CPU usage of cached using <n> samples"
 	echo "         -y:         do not wait between tests"
 	echo "         -c:         just clean the segment"
 	echo "         -h:         print this message"
