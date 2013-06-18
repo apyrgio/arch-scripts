@@ -1,5 +1,14 @@
 #! /bin/bash
 
+usage() {
+	echo "Usage: ./make_xseg.sh [-c] [-d] [-i]"
+	echo ""
+	echo "Options: -c:  Clean previous tries beforehand"
+	echo "         -d:  Print stdout (off by default)"
+	echo "         -i:  Install the compiled files"
+	echo ""
+}
+
 ###################
 # Initializations #
 ###################
@@ -13,16 +22,21 @@ ARCH_SCRIPTS=$(dirname "$(readlink /proc/$$/fd/255)")
 source $ARCH_SCRIPTS/init.sh
 
 PIPE="1>/dev/null"
-if [[ ! "$(logname)" = "root" ]]; then $SUDO=sudo; fi
+if [[ ! "$(logname)" = "root" ]]; then SUDO="su -c"; fi
 
 #############
 # Arguments #
 #############
 
 while [[ -n $1 ]]; do
-	if [[ $1 = '-c' ]]; then CLEAN=0	#Will initially call `make clean`
-	elif [[ $1 = '-d' ]]; then PIPE=""	#Will not pipe any output to /dev/null
-	else red_echo "${1}: Unknown command."
+	if [[ $1 = '-c' ]]; then CLEAN="yes"
+	elif [[ $1 = '-d' ]]; then PIPE=""
+	elif [[ $1 = '-i' ]]; then INSTALL="yes"
+	elif [[ $1 = '-h' ]]; then usage; exit
+	else
+		usage
+		red_echo "${1}: Unknown command."
+		exit
 	fi
 	shift
 done
@@ -33,8 +47,10 @@ done
 
 cd $XSEG
 
-if [[ $CLEAN ]]; then
+if [[ $CLEAN == "yes" ]]; then
 	eval make clean $PIPE
 fi
 eval make $PIPE
-eval $SUDO make install $PIPE
+if [[ $INSTALL == "yes" ]]; then
+	eval $SUDO make install $PIPE
+fi
