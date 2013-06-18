@@ -82,6 +82,9 @@ create_bench_ports
 # Clean all previous tries #
 ############################
 
+#Initialize the needed files
+init_binaries_and_folders
+
 # Call nuke_xseg to clear the segment and kill all peer processes
 nuke_xseg
 
@@ -93,19 +96,19 @@ if [[ $CLEAN ]]; then exit; fi
 
 create_seed $SEED
 
-BENCH_COMMAND='archip-bench -g posix:cached: -p ${P} -tp 0
+BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${BENCH_SIZE} --progress yes --iodepth ${IODEPTH}
-		--verify meta ${RC} -l /var/log/stress_cached/bench${I}.log'
+		--verify meta ${RC} -l ${LOG_FOLDER}/bench${I}.log'
 
-CACHED_COMMAND='archip-cached -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
+CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -mo ${CACHE_OBJECTS}
 		-ts ${CACHE_SIZE}
-		-l /var/log/stress_cached/cached${I}.log'
+		-l ${LOG_FOLDER}/cached${I}.log'
 
-PFILED_COMMAND='archip-pfiled -g posix:cached: -p 0 -t ${T_PFILED} -v ${VERBOSITY}
-		--pithos /tmp/pithos1/ --archip /tmp/pithos2/
-		-l /var/log/stress_cached/pfiled${I}.log'
+PFILED_COMMAND='${PFILED_BIN} -g posix:cached: -p 0 -t ${T_PFILED} -v ${VERBOSITY}
+		--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
+		-l ${LOG_FOLDER}/pfiled${I}.log'
 
 #############
 # Main loop #

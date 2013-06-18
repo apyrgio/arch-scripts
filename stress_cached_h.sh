@@ -44,6 +44,20 @@ usage() {
 	echo "  have to do anything."
 }
 
+init_binaries_and_folders() {
+	PITHOS_FOLDER=${ARCH_SCRIPTS}/pithos/pithos
+	ARCHIP_FOLDER=${ARCH_SCRIPTS}/pithos/archip
+	LOG_FOLDER=${ARCH_SCRIPTS}/log/stress_cached
+
+	XSEG_BIN=${XSEG}/peers/user/xseg
+	BENCH_BIN=${XSEG}/peers/user/archip-bench
+	CACHED_BIN=${XSEG}/peers/user/archip-cached
+	PFILED_BIN=${XSEG}/peers/user/archip-pfiled
+
+	# Create log folder
+	mkdir -p ${LOG_FOLDER}
+}
+
 parse_args() {
 	# ${1} is for threads
 	if [[ ${1} = 'single' ]]; then
@@ -174,7 +188,7 @@ print_test() {
 }
 
 init_log() {
-	LOG=/var/log/stress_cached/${1}
+	LOG=${LOG_FOLDER}/${1}
 
 	# Truncate previous logs
 	cat /dev/null > $LOG
@@ -200,14 +214,25 @@ restore_output() {
 }
 
 nuke_xseg() {
-	suppress_output
+	echo -n "Nuking xseg... "
 
 	# Delete pfiled files
-	find /tmp/pithos1/ -name "*" -exec rm -rf {} \;
-	find /tmp/pithos2/ -name "*" -exec rm -rf {} \;
-	mkdir -p /tmp/pithos1/
-	mkdir -p /tmp/pithos2/
-	mkdir -p /var/log/stress_cached/
+	if [[ ! "$(basename $PITHOS_FOLDER)" = pithos ]] ||
+		[[ ! "$(basename $ARCHIP_FOLDER)" = archip ]]; then
+		red_echo "FAILED!"
+		echo ""
+		red_echo "There's something wrong with the pfiled folders"
+		red_echo "and you've just dodged a bullet..."
+		exit
+	fi
+
+	suppress_output
+	find ${PITHOS_FOLDER} -name "*" -exec rm -rf {} \;
+	find ${ARCHIP_FOLDER} -name "*" -exec rm -rf {} \;
+
+	# Re-build pfiled folders
+	mkdir -p ${PITHOS_FOLDER}
+	mkdir -p ${ARCHIP_FOLDER}
 
 	# Clear previous tries
 	killall -9 archip-bench
@@ -215,12 +240,13 @@ nuke_xseg() {
 	killall -9 archip-pfiled
 
 	# Re-build segment
-	xseg posix:cached:16:1024:12 destroy create
+	$XSEG_BIN posix:cached:16:1024:12 destroy create
 	for P in $BENCH_PORTS; do
-		xseg posix:cached: set-next ${P} 1
+		$XSEG_BIN posix:cached: set-next ${P} 1
 	done
-
 	restore_output
+
+	grn_echo "DONE!"
 }
 
 read_prompt () {

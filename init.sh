@@ -22,5 +22,6 @@ blu_echo() {
 }
 
 #ARCH_SCRIPTS must be already set by the caller function
-XSEG=$ARCH_SCRIPTS/../archipelago/xseg
+#XSEG=$ARCH_SCRIPTS/../archipelago/xseg
+XSEG=${HOME}/archipelago/xseg
 
