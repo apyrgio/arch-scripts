@@ -22,7 +22,6 @@ ARCH_SCRIPTS=$(dirname "$(readlink /proc/$$/fd/255)")
 source $ARCH_SCRIPTS/init.sh
 
 PIPE="1>/dev/null"
-if [[ ! "$(logname)" = "root" ]]; then SUDO="su -c"; fi
 
 #############
 # Arguments #
@@ -52,5 +51,5 @@ if [[ $CLEAN == "yes" ]]; then
 fi
 eval make $PIPE
 if [[ $INSTALL == "yes" ]]; then
-	eval $SUDO make install $PIPE
+	eval make install $PIPE
 fi
