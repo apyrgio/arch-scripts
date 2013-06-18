@@ -111,13 +111,13 @@ PFILED_COMMAND='archip-pfiled -g posix:cached: -p 0 -t ${T_PFILED} -v ${VERBOSIT
 # Main loop #
 #############
 
-for WCP in writeback writethrough; do
-for CACHE_OBJECTS in 4 16 64 512; do
-for CACHE_SIZE_AMPLIFY in 2x 1.5x 1x 0.5x; do
-for IODEPTH in 1 16; do
-for THREADS in single multi; do
-for BENCH_OBJECTS in bounded holyshit; do
-for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do
+for WCP in writeback writethrough; do			# +512
+for CACHE_OBJECTS in 4 16 64 512; do			# +128
+for CACHE_SIZE_AMPLIFY in 2x 1.5x 1x 0.5x; do		# +32
+for IODEPTH in 1 16; do					# +16
+for THREADS in single multi; do				# +8
+for BENCH_OBJECTS in bounded holyshit; do		# +4
+for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do	# +1
 
 	I=$(( $I+1 ))
 
@@ -132,6 +132,8 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do
 		elif [[ $I -eq $FLIMIT ]]; then FF=1
 		fi
 	fi
+
+	if [[ $CACHE_SIZE_AMPLIFY == '1.5x' ]]; then continue; fi
 
 	# Make test-specific initializations
 	init_log bench${I}.log
