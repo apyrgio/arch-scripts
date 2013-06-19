@@ -227,7 +227,7 @@ nuke_xseg() {
 		exit
 	fi
 
-	#suppress_output
+	suppress_output
 	find ${PITHOS_FOLDER} -name "*" -exec rm -rf {} \;
 	find ${ARCHIP_FOLDER} -name "*" -exec rm -rf {} \;
 
@@ -245,7 +245,7 @@ nuke_xseg() {
 	for P in $BENCH_PORTS; do
 		eval $XSEG_BIN posix:cached: set-next ${P} 1
 	done
-	#restore_output
+	restore_output
 
 	grn_echo "DONE!"
 }
