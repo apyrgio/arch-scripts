@@ -152,14 +152,14 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do	# +1
 	fi
 
 	# Start pfiled
-	eval ${PFILED_COMMAND}" &"
+	run_background "${PFILED_COMMAND}"
 	PID_PFILED=$!
 
 	# Start cached
 	if [[ $PROFILE == 0 ]]; then
-		eval "env CPUPROFILE_FREQUENCY=${CPU_SAMPLES} "${CACHED_COMMAND}" &"
+		run_profile_background "${CACHED_COMMAND}"
 	else
-		eval ${CACHED_COMMAND}" &"
+		run_background "${CACHED_COMMAND}"
 	fi
 	PID_CACHED=$!
 	# Wait a bit to make sure both cached and pfiled is up
@@ -168,7 +168,7 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do	# +1
 	# Start bench (write mode)
 	BENCH_OP=write
 	for P in ${BENCH_PORTS}; do
-		eval ${BENCH_COMMAND}" &"
+		run_background "${BENCH_COMMAND}"
 		PID_BENCH=${PID_BENCH}" $!"
 	done
 	echo -n "Waiting for bench to finish writing... "
@@ -187,7 +187,7 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do	# +1
 	# Start bench (read mode)
 	BENCH_OP=read
 	for P in ${BENCH_PORTS}; do
-		eval ${BENCH_COMMAND}" &"
+		run_background "${BENCH_COMMAND}"
 		PID_BENCH=${PID_BENCH}" $!"
 	done
 	echo -n "Waiting for bench to finish reading... "

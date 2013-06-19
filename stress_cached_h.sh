@@ -49,10 +49,11 @@ init_binaries_and_folders() {
 	ARCHIP_FOLDER=${ARCH_SCRIPTS}/pithos/archip
 	LOG_FOLDER=${ARCH_SCRIPTS}/log/stress_cached
 
-	XSEG_BIN=${XSEG}/peers/user/xseg
-	BENCH_BIN=${XSEG}/peers/user/archip-bench
-	CACHED_BIN=${XSEG}/peers/user/archip-cached
-	PFILED_BIN=${XSEG}/peers/user/archip-pfiled
+	LD_PRELOAD_PATH="LD_PRELOAD=${XSEG}/sys/user/libxseg.so"
+	XSEG_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/xseg"
+	BENCH_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-bench"
+	CACHED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-cached"
+	PFILED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-pfiled"
 
 	# Create log folder
 	mkdir -p ${LOG_FOLDER}
@@ -226,7 +227,7 @@ nuke_xseg() {
 		exit
 	fi
 
-	suppress_output
+	#suppress_output
 	find ${PITHOS_FOLDER} -name "*" -exec rm -rf {} \;
 	find ${ARCHIP_FOLDER} -name "*" -exec rm -rf {} \;
 
@@ -240,13 +241,21 @@ nuke_xseg() {
 	killall -9 archip-pfiled
 
 	# Re-build segment
-	$XSEG_BIN posix:cached:16:1024:12 destroy create
+	eval $XSEG_BIN posix:cached:16:1024:12 destroy create
 	for P in $BENCH_PORTS; do
-		$XSEG_BIN posix:cached: set-next ${P} 1
+		eval $XSEG_BIN posix:cached: set-next ${P} 1
 	done
-	restore_output
+	#restore_output
 
 	grn_echo "DONE!"
+}
+
+run_background() {
+	eval $(eval echo ${1})" &"
+}
+
+run_profile_background() {
+	run_background "env CPUPROFILE_FREQUENCY=${CPU_SAMPLES} ${1}"
 }
 
 read_prompt () {
