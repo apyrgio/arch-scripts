@@ -77,6 +77,9 @@ create_bench_ports
 # Clean all previous tries #
 ############################
 
+#Initialize the needed files
+init_binaries_and_folders
+
 # Call nuke_xseg to clear the segment and kill all peer processes
 nuke_xseg
 
@@ -88,18 +91,18 @@ if [[ $CLEAN ]]; then exit; fi
 
 create_seed $SEED
 
-BENCH_COMMAND='archip-bench -g posix:apyrgio: -p ${P} -tp 0
+BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 	-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 	-ts ${BENCH_SIZE} --progress yes --iodepth ${IODEPTH} --verify meta
-	-l /var/log/stress_cached_legacy/bench${I}.log'
+	-l ${LOG_FOLDER}/bench${I}.log'
 
-CACHED_COMMAND='archip-cached -g posix:apyrgio: -p 1 -bp 0 -t ${T_CACHED}
+CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 	-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -cs ${CACHE_SIZE}
-	-l /var/log/stress_cached_legacy/cached${I}.log'
+	-l ${LOG_FOLDER}/cached${I}.log'
 
-MT_PFILED_COMMAND='archip-pfiled -g posix:apyrgio: -p 0 -t ${T_MTPF} -v ${VERBOSITY}
-	--pithos /tmp/pithos1/ --archip /tmp/pithos2/
-	-l /var/log/stress_cached_legacy/mt-pfiled${I}.log'
+PFILED_COMMAND='${PFILED_BIN} -g posix:cached: -p 0 -t ${T_MTPF} -v ${VERBOSITY}
+	--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
+	-l ${LOG_FOLDER}/pfiled${I}.log'
 
 #############
 # Main loop #
@@ -129,7 +132,7 @@ for BENCH_SIZE in '1/2' '1+1/2' '2+1/2'; do
 	# Make test-specific initializations
 	init_log bench${I}.log
 	init_log cached${I}.log
-	init_log mt-pfiled${I}.log
+	init_log pfiled${I}.log
 
 	parse_args $THREADS $BENCH_SIZE $CACHE_SIZE
 	print_test
@@ -139,20 +142,20 @@ for BENCH_SIZE in '1/2' '1+1/2' '2+1/2'; do
 		if [[ $SKIP == 0 ]]; then continue; fi
 	fi
 
-	# Start mt-pfiled
-	eval ${MT_PFILED_COMMAND}" &"
-	PID_MTPF=$!
+	# Start pfiled
+	run_background "${PFILED_COMMAND}"
+	PID_PFILED=$!
 
 	# Start cached
-	eval ${CACHED_COMMAND}" &"
+	run_background "${CACHED_COMMAND}"
 	PID_CACHED=$!
-	# Wait a bit to make sure both cached and mt-pfiled is up
-	sleep 10
+	# Wait a bit to make sure both cached and pfiled is up
+	sleep 11
 
 	# Start bench (write mode)
 	BENCH_OP=write
 	for P in ${BENCH_PORTS}; do
-		eval ${BENCH_COMMAND}" &"
+		run_background "${BENCH_COMMAND}"
 		PID_BENCH=${PID_BENCH}" $!"
 	done
 	echo -n "Waiting for bench to finish writing... "
@@ -161,10 +164,17 @@ for BENCH_SIZE in '1/2' '1+1/2' '2+1/2'; do
 	done
 	grn_echo "DONE!"
 
+	if [[ $PROFILE == 0 ]]; then
+		killall archip-cached
+		sleep 1
+		nuke_xseg
+		continue
+	fi
+
 	# Start bench (read mode)
 	BENCH_OP=read
 	for P in ${BENCH_PORTS}; do
-		eval ${BENCH_COMMAND}" &"
+		run_background "${BENCH_COMMAND}"
 		PID_BENCH=${PID_BENCH}" $!"
 	done
 	echo -n "Waiting for bench to finish reading... "
