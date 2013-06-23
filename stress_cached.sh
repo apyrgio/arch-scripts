@@ -21,6 +21,8 @@ PROFILE=1
 I=0
 WAIT=0
 BENCH_OP=write
+USE_PFILED="no"
+USE_CACHED="yes"
 
 # Remember, in Bash 0 is true and 1 is false
 while [[ -n $1 ]]; do
@@ -42,6 +44,8 @@ while [[ -n $1 ]]; do
 	elif [[ $1 = '-seed' ]]; then
 		shift
 		SEED=$1
+	elif [[ $1 = '--pfiled' ]]; then
+		USE_PFILED="yes"
 	elif [[ $1 = '-v' ]]; then
 		shift
 		VERBOSITY=$1
@@ -110,6 +114,18 @@ PFILED_COMMAND='${PFILED_BIN} -g posix:cached: -p 0 -t ${T_PFILED} -v ${VERBOSIT
 		--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
 		-l ${LOG_FOLDER}/pfiled${I}.log'
 
+SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p 0 -t ${T_SOSD} -v ${VERBOSITY}
+		--pool ${SOSD_POOL}
+		-l ${LOG_FOLDER}/sosd${I}.log'
+
+if [[ $USE_PFILED == "yes" ]]; then
+	STORAGE_COMMAND=$PFILED_COMMAND
+	STORAGE="pfiled"
+else
+	STORAGE_COMMAND=$SOSD_COMMAND
+	STORAGE="sosd"
+fi
+
 #############
 # Main loop #
 #############
@@ -121,28 +137,35 @@ for IODEPTH in 1 16; do					# +16
 for THREADS in single multi; do				# +8
 for BENCH_OBJECTS in bounded holyshit; do		# +4
 for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do	# +1
+for USE_CACHED in yes no; do
 
-	I=$(( $I+1 ))
+	# A new test is considered to begin only when cached is used.
+	# Else, it's just the second part of the test.
+	if [[ $USE_CACHED == "yes" ]]; then
+		I=$(( $I+1 ))
 
-	# Check if user has asked to fast-forward or run a specific test
-	if [[ ($UNTIL && $I -gt $ULIMIT) ]]; then exit
-	elif [[ $TEST ]]; then
-		if [[ $I -lt $TLIMIT ]]; then continue
-		elif [[ $I -gt $TLIMIT ]]; then exit
+		# Check if user has asked to fast-forward or run a specific test
+		if [[ ($UNTIL && $I -gt $ULIMIT) ]]; then exit
+		elif [[ $TEST ]]; then
+			if [[ $I -lt $TLIMIT ]]; then continue
+			elif [[ $I -gt $TLIMIT ]]; then exit
+			fi
+		elif [[ $FF ]]; then
+			if [[ $I -lt $FLIMIT ]]; then continue
+			elif [[ $I -eq $FLIMIT ]]; then FF=1
+			fi
 		fi
-	elif [[ $FF ]]; then
-		if [[ $I -lt $FLIMIT ]]; then continue
-		elif [[ $I -eq $FLIMIT ]]; then FF=1
-		fi
+
+		if [[ $CACHE_SIZE_AMPLIFY == '1.5x' ]]; then continue; fi
+
+		I_TEST=${I}"a"
+	else
+		restore_next_ports
+		I_TEST=${I}"b"
 	fi
 
-	if [[ $CACHE_SIZE_AMPLIFY == '1.5x' ]]; then continue; fi
-
 	# Make test-specific initializations
-	init_log bench${I}.log
-	init_log cached${I}.log
-	init_log pfiled${I}.log
-
+	init_logs ${I_TEST}
 	parse_args $THREADS $CACHE_SIZE_AMPLIFY $BENCH_SIZE_AMPLIFY $BENCH_OBJECTS
 	print_test
 
@@ -151,18 +174,20 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do	# +1
 		if [[ $SKIP == 0 ]]; then continue; fi
 	fi
 
-	# Start pfiled
-	run_background "${PFILED_COMMAND}"
-	PID_PFILED=$!
+	# Start chosen storage
+	run_background "${STORAGE_COMMAND}"
+	PID_STORAGE=$!
 
 	# Start cached
-	if [[ $PROFILE == 0 ]]; then
-		run_profile_background "${CACHED_COMMAND}"
-	else
-		run_background "${CACHED_COMMAND}"
+	if [[ $USE_CACHED == "yes" ]]; then
+		if [[ $PROFILE == 0 ]]; then
+			run_profile_background "${CACHED_COMMAND}"
+		else
+			run_background "${CACHED_COMMAND}"
+		fi
+		PID_CACHED=$!
 	fi
-	PID_CACHED=$!
-	# Wait a bit to make sure both cached and pfiled is up
+	# Wait a bit to make sure both cached and chosen storage is up
 	sleep 1
 
 	# Start bench (write mode)
@@ -177,7 +202,7 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do	# +1
 	done
 	grn_echo "DONE!"
 
-	if [[ $PROFILE == 0 ]]; then
+	if [[ $USE_CACHED == "yes" ]] && [[ $PROFILE == 0 ]]; then
 		killall archip-cached
 		sleep 1
 		nuke_xseg
@@ -199,6 +224,7 @@ for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do	# +1
 	# Since cached's termination has not been solved yet, we
 	# have to resort to weapons of mass destruction
 	nuke_xseg
+done
 done
 done
 done

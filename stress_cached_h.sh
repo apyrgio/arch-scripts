@@ -1,7 +1,7 @@
 #! /bin/bash
 
 #####################
-# Haelper functions #
+# Helper functions #
 #####################
 
 usage() {
@@ -15,6 +15,7 @@ usage() {
 	echo "         -until <i>: run every test until AND test <i>"
 	echo "         -bench <p>: define number of bench instances"
 	echo "         -seed <n>:  use <n> as a seed for the test (9-digits only)"
+	echo "         --pfiled:   use pfiled instead of sosd for storage"
 	echo "         -v <l>:     set verbosity level to <l>"
 	echo "         -p <n>:     profile CPU usage of cached using <n> samples"
 	echo "         -y:         do not wait between tests"
@@ -49,23 +50,45 @@ init_binaries_and_folders() {
 	ARCHIP_FOLDER=${ARCH_SCRIPTS}/pithos/archip
 	LOG_FOLDER=${ARCH_SCRIPTS}/log/stress_cached
 
+	SOSD_POOL=cached-blocks
+
 	LD_PRELOAD_PATH="LD_PRELOAD=${XSEG}/sys/user/libxseg.so"
 	XSEG_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/xseg"
 	BENCH_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-bench"
 	CACHED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-cached"
 	PFILED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-pfiled"
+	SOSD_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-sosd"
 
 	# Create log folder
 	mkdir -p ${LOG_FOLDER}
 }
 
+init_logs() {
+	local peer
+
+	for peer in bench cached $STORAGE; do
+		LOG=${LOG_FOLDER}/"${peer}"${1}".log"
+
+		# Truncate previous logs
+		cat /dev/null > $LOG
+
+		echo "" >> $LOG
+		blu_echo "******************" >> $LOG
+		blu_echo " TEST ${I} STARTED" >> $LOG
+		blu_echo "******************" >> $LOG
+		echo "" >> $LOG
+	done
+}
+
 parse_args() {
 	# ${1} is for threads
 	if [[ ${1} = 'single' ]]; then
+		T_SOSD=1
 		T_PFILED=64
 		T_CACHED=1
 		T_BENCH=1
 	elif [[ ${1} = 'multi' ]]; then
+		T_SOSD=1
 		T_PFILED=64
 		T_CACHED=4
 		T_BENCH=1
@@ -165,7 +188,7 @@ create_seed() {
 #    backslash from the last line (the line with the (#) character.
 print_test() {
 	echo ""
-	grn_echo "Summary of Test ${I} (SEED ${SEED}):"
+	grn_echo "Summary of Test ${I_TEST} (SEED ${SEED}):"
 	echo "WCP=${WCP} THREADS=${THREADS} IODEPTH=${IODEPTH}"
 	echo -n "CACHE_OBJECTS=${CACHE_OBJECTS} CACHE_SIZE=${CACHE_SIZE}"
 	echo "(${CACHE_SIZE_AMPLIFY})"
@@ -181,24 +204,11 @@ print_test() {
 	eval "echo "${CACHED_COMMAND}""#"" \
 		| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
 	echo ""
-	eval "echo "${PFILED_COMMAND}""#"" \
+	eval "echo "${STORAGE_COMMAND}""#"" \
 		| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
 
 	grn_echo "-------------------------------------------------------"
 	echo ""
-}
-
-init_log() {
-	LOG=${LOG_FOLDER}/${1}
-
-	# Truncate previous logs
-	cat /dev/null > $LOG
-
-	echo "" >> $LOG
-	blu_echo "******************" >> $LOG
-	blu_echo " TEST ${I} STARTED" >> $LOG
-	blu_echo "******************" >> $LOG
-	echo "" >> $LOG
 }
 
 # The following two functions manipulate the stdout and stderr.
@@ -217,9 +227,10 @@ restore_output() {
 nuke_xseg() {
 	echo -n "Nuking xseg... "
 
-	# Delete pfiled files
-	if [[ ! "$(basename $PITHOS_FOLDER)" = pithos ]] ||
-		[[ ! "$(basename $ARCHIP_FOLDER)" = archip ]]; then
+	# Check before deleting pfiled files
+	if [[ $USE_PFILED = "yes" ]] &&
+		[[ ( ! "$(basename $PITHOS_FOLDER)" == pithos ||
+		! "$(basename $ARCHIP_FOLDER)" == archip ) ]]; then
 		red_echo "FAILED!"
 		echo ""
 		red_echo "There's something wrong with the pfiled folders"
@@ -227,27 +238,38 @@ nuke_xseg() {
 		exit
 	fi
 
-	suppress_output
-	find ${PITHOS_FOLDER} -name "*" -exec rm -rf {} \;
-	find ${ARCHIP_FOLDER} -name "*" -exec rm -rf {} \;
+	#suppress_output
 
-	# Re-build pfiled folders
-	mkdir -p ${PITHOS_FOLDER}
-	mkdir -p ${ARCHIP_FOLDER}
+	if [[ $USE_PFILED = "yes" ]]; then
+		# Delete pfiled files
+		find ${PITHOS_FOLDER} -name "*" -exec rm -rf {} \;
+		find ${ARCHIP_FOLDER} -name "*" -exec rm -rf {} \;
+
+		# Re-build pfiled folders
+		mkdir -p ${PITHOS_FOLDER}
+		mkdir -p ${ARCHIP_FOLDER}
+	fi
 
 	# Clear previous tries
 	killall -9 archip-bench
 	killall -9 archip-cached
 	killall -9 archip-pfiled
+	killall -9 archip-sosd
 
 	# Re-build segment
 	eval $XSEG_BIN posix:cached:16:1024:12 destroy create
 	for P in $BENCH_PORTS; do
 		eval $XSEG_BIN posix:cached: set-next ${P} 1
 	done
-	restore_output
+	#restore_output
 
 	grn_echo "DONE!"
+}
+
+restore_next_ports() {
+	for P in $BENCH_PORTS; do
+		eval $XSEG_BIN posix:cached: set-next ${P} 0
+	done
 }
 
 run_background() {
