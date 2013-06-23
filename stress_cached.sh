@@ -194,6 +194,7 @@ for USE_CACHED in yes no; do
 
 	# Start bench (write mode)
 	BENCH_OP=write
+	PID_BENCH=""
 	for P in ${BENCH_PORTS}; do
 		run_background "${BENCH_COMMAND}"
 		PID_BENCH=${PID_BENCH}" $!"
@@ -213,6 +214,7 @@ for USE_CACHED in yes no; do
 
 	# Start bench (read mode)
 	BENCH_OP=read
+	PID_BENCH=""
 	for P in ${BENCH_PORTS}; do
 		run_background "${BENCH_COMMAND}"
 		PID_BENCH=${PID_BENCH}" $!"
