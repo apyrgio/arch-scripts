@@ -103,20 +103,20 @@ create_seed $SEED
 BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${BENCH_SIZE} --progress yes --iodepth ${IODEPTH}
-		--verify meta ${RC} -l ${LOG_FOLDER}/bench${I}.log'
+		--verify meta ${RC} -l ${LOG_FOLDER}/bench${I_TEST}.log'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -mo ${CACHE_OBJECTS}
 		-ts ${CACHE_SIZE}
-		-l ${LOG_FOLDER}/cached${I}.log'
+		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
 PFILED_COMMAND='${PFILED_BIN} -g posix:cached: -p 0 -t ${T_PFILED} -v ${VERBOSITY}
 		--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
-		-l ${LOG_FOLDER}/pfiled${I}.log'
+		-l ${LOG_FOLDER}/pfiled${I_TEST}.log'
 
 SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p 0 -t ${T_SOSD} -v ${VERBOSITY}
 		--pool ${SOSD_POOL}
-		-l ${LOG_FOLDER}/sosd${I}.log'
+		-l ${LOG_FOLDER}/sosd${I_TEST}.log'
 
 if [[ $USE_PFILED == "yes" ]]; then
 	STORAGE_COMMAND=$PFILED_COMMAND
@@ -130,9 +130,9 @@ fi
 # Main loop #
 #############
 
-for WCP in writeback writethrough; do			# +512
-for CACHE_OBJECTS in 4 16 64 512; do			# +128
-for CACHE_SIZE_AMPLIFY in 2x 1.5x 1x 0.5x; do		# +32
+for WCP in writeback writethrough; do			# +384
+for CACHE_OBJECTS in 4 16 64 512; do			# +96
+for CACHE_SIZE_AMPLIFY in 2x 1x 0.5x; do		# +32
 for IODEPTH in 1 16; do					# +16
 for THREADS in single multi; do				# +8
 for BENCH_OBJECTS in bounded holyshit; do		# +4
@@ -143,25 +143,21 @@ for USE_CACHED in yes no; do
 	# Else, it's just the second part of the test.
 	if [[ $USE_CACHED == "yes" ]]; then
 		I=$(( $I+1 ))
-
-		# Check if user has asked to fast-forward or run a specific test
-		if [[ ($UNTIL && $I -gt $ULIMIT) ]]; then exit
-		elif [[ $TEST ]]; then
-			if [[ $I -lt $TLIMIT ]]; then continue
-			elif [[ $I -gt $TLIMIT ]]; then exit
-			fi
-		elif [[ $FF ]]; then
-			if [[ $I -lt $FLIMIT ]]; then continue
-			elif [[ $I -eq $FLIMIT ]]; then FF=1
-			fi
-		fi
-
-		if [[ $CACHE_SIZE_AMPLIFY == '1.5x' ]]; then continue; fi
-
 		I_TEST=${I}"a"
 	else
-		restore_next_ports
 		I_TEST=${I}"b"
+	fi
+
+	# Check if user has asked to fast-forward or run a specific test
+	if [[ ($UNTIL && $I -gt $ULIMIT) ]]; then exit
+	elif [[ $TEST ]]; then
+		if [[ $I -lt $TLIMIT ]]; then continue
+		elif [[ $I -gt $TLIMIT ]]; then exit
+		fi
+	elif [[ $FF ]]; then
+		if [[ $I -lt $FLIMIT ]]; then continue
+		elif [[ $I -eq $FLIMIT ]]; then FF=1
+		fi
 	fi
 
 	# Make test-specific initializations
@@ -172,6 +168,12 @@ for USE_CACHED in yes no; do
 	if [[ $WAIT == 0 ]]; then
 		read_prompt
 		if [[ $SKIP == 0 ]]; then continue; fi
+	fi
+
+	# Unset next ports for bench, so that requests can go directly to
+	# storage.
+	if [[ $USE_CACHED == "no" ]]; then
+		restore_bench_ports
 	fi
 
 	# Start chosen storage

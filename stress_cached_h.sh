@@ -238,7 +238,7 @@ nuke_xseg() {
 		exit
 	fi
 
-	#suppress_output
+	suppress_output
 
 	if [[ $USE_PFILED = "yes" ]]; then
 		# Delete pfiled files
@@ -261,12 +261,12 @@ nuke_xseg() {
 	for P in $BENCH_PORTS; do
 		eval $XSEG_BIN posix:cached: set-next ${P} 1
 	done
-	#restore_output
+	restore_output
 
 	grn_echo "DONE!"
 }
 
-restore_next_ports() {
+restore_bench_ports() {
 	for P in $BENCH_PORTS; do
 		eval $XSEG_BIN posix:cached: set-next ${P} 0
 	done
