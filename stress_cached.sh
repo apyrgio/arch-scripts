@@ -24,11 +24,15 @@ BENCH_OP=write
 USE_PFILED="no"
 USE_CACHED="yes"
 
-# Remember, in Bash 0 is true and 1 is false
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
 		shift
 		LOG_FOLDER=$1
+		if [[ ! $LOG_FOLDER == ${HOME}* ]] &&
+			[[ ! $LOG_FOLDER == "/tmp"* ]]; then
+			red_echo "-l ${1}: Log path is unsafe"
+			exit
+		fi
 	elif [[ $1 = '-ff' ]]; then
 		shift
 		FF=0
@@ -105,8 +109,8 @@ create_seed $SEED
 
 BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
-		-ts ${BENCH_SIZE} --progress yes --iodepth ${IODEPTH}
-		--verify meta ${RC} -l ${LOG_FOLDER}/bench${I_TEST}.log'
+		-ts ${BENCH_SIZE} -bs ${BLOCK_SIZE} --progress yes --iodepth ${IODEPTH}
+		--verify no ${RC} -l ${LOG_FOLDER}/bench${I_TEST}.log'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -mo ${CACHE_OBJECTS}
@@ -129,27 +133,41 @@ else
 	STORAGE="sosd"
 fi
 
+###########################
+# Initialize test options #
+###########################
+
+TEST_OPTIONS='WCP CACHE_OBJECTS CACHE_SIZE_AMPLIFY IODEPTH THREADS
+	BENCH_OBJECTS BENCH_SIZE_AMPLIFY BLOCK_SIZE USE_CACHED'
+
+WCP_VALS="writeback writethrough"
+CACHE_OBJECTS_VALS="4 16 64 512"
+CACHE_SIZE_AMPLIFY_VALS="2x 1x 0.5x"
+IODEPTH_VALS="1 16"
+THREADS_VALS="single multi"
+BENCH_OBJECTS_VALS="bounded holyshit"
+BENCH_SIZE_AMPLIFY_VALS="0.25x 0.5x 1x 1.5x"
+BLOCK_SIZE_VALS="4k 8k 32k 128k 256k 1M 4M"
+USE_CACHED_VALS="yes no"
+
+# Check if the user has provided his own values for a test option
+override_test_options
+
 #############
 # Main loop #
 #############
 
-for WCP in writeback writethrough; do			# +384
-for CACHE_OBJECTS in 4 16 64 512; do			# +96
-for CACHE_SIZE_AMPLIFY in 2x 1x 0.5x; do		# +32
-for IODEPTH in 1 16; do					# +16
-for THREADS in single multi; do				# +8
-for BENCH_OBJECTS in bounded holyshit; do		# +4
-for BENCH_SIZE_AMPLIFY in 0.25x 0.5x 1x 1.5x; do	# +1
-for USE_CACHED in yes no; do
+for WCP in $WCP_VALS; do
+for CACHE_OBJECTS in $CACHE_OBJECTS_VALS; do
+for CACHE_SIZE_AMPLIFY in $CACHE_SIZE_AMPLIFY_VALS; do
+for IODEPTH in $IODEPTH_VALS; do
+for THREADS in $THREADS_VALS; do
+for BENCH_OBJECTS in $BENCH_OBJECTS_VALS; do
+for BENCH_SIZE_AMPLIFY in $BENCH_SIZE_AMPLIFY_VALS; do
+for BLOCK_SIZE in $BLOCK_SIZE_VALS; do
+for USE_CACHED in $USE_CACHED_VALS; do
 
-	# A new test is considered to begin only when cached is used.
-	# Else, it's just the second part of the test.
-	if [[ $USE_CACHED == "yes" ]]; then
-		I=$(( $I+1 ))
-		I_TEST=${I}"a"
-	else
-		I_TEST=${I}"b"
-	fi
+	I=$(( $I+1 ))
 
 	# Check if user has asked to fast-forward or run a specific test
 	if [[ ($UNTIL && $I -gt $ULIMIT) ]]; then exit
@@ -164,19 +182,16 @@ for USE_CACHED in yes no; do
 	fi
 
 	# Make test-specific initializations
+	I_TEST=$I
 	init_logs ${I_TEST}
-	parse_args $THREADS $CACHE_SIZE_AMPLIFY $BENCH_SIZE_AMPLIFY $BENCH_OBJECTS
+	parse_args $THREADS $CACHE_SIZE_AMPLIFY $BENCH_SIZE_AMPLIFY \
+		$BENCH_OBJECTS $USE_CACHED
 	print_test
 
+	# Determine if we need to wait for user prompt
 	if [[ $WAIT == 0 ]]; then
 		read_prompt
 		if [[ $SKIP == 0 ]]; then continue; fi
-	fi
-
-	# Unset next ports for bench, so that requests can go directly to
-	# storage.
-	if [[ $USE_CACHED == "no" ]]; then
-		restore_bench_ports
 	fi
 
 	# Start chosen storage
@@ -208,6 +223,9 @@ for USE_CACHED in yes no; do
 	done
 	grn_echo "DONE!"
 
+	# If we profile cached, we don't want to kill -9 it since the profile
+	# data won't be written. We simply send a SIGTERM and wait a second
+	# before nuking the segment.
 	if [[ $USE_CACHED == "yes" ]] && [[ $PROFILE == 0 ]]; then
 		killall archip-cached
 		sleep 1
@@ -231,6 +249,7 @@ for USE_CACHED in yes no; do
 	# Since cached's termination has not been solved yet, we
 	# have to resort to weapons of mass destruction
 	nuke_xseg
+done
 done
 done
 done

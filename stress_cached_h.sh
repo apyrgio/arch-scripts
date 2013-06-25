@@ -11,7 +11,8 @@ usage() {
 	echo "                       [-v <i>] [-p <n>] [-y] [-c] [-h]"
 	echo ""
 	echo "Options: -l <path>:  Store logs in this path"
-	echo "                     (default: ${ARCH_SCRIPTS}/log/stress_cached)"
+	echo "                     default: ${ARCH_SCRIPTS}/log/stress_cached"
+	echo "                     permitted: ${HOME}/* or /tmp/*"
 	echo "         -test <i>:  run only test <i>"
 	echo "         -ff <i>:    fast-forward to test <i>, run every test"
 	echo "                     from there on"
@@ -48,6 +49,16 @@ usage() {
 	echo "  (or bench*, pfiled*). Thus, when a file is rm'ed or a new file"
 	echo "  with the sam prefix has been added, tail will read it and you won't"
 	echo "  have to do anything."
+	echo ""
+	echo "* You can override the predefined-values of a test option by"
+	echo "  passing an environment variable like FORCE_*, where '*' can be"
+	echo "  a test option (WCP, CACHE_SIZE, BENCH_SIZE etc.). Then, the"
+	echo "  value of FORCE_* is used to override the pre-defined option"
+	echo "  values."
+	echo ""
+	echo "  e.g. FORCE_BLOCK_SIZE='4k 666k' ./stress_cached.sh"
+	echo ""
+
 }
 
 init_binaries_and_folders() {
@@ -68,6 +79,21 @@ init_binaries_and_folders() {
 
 	# Create log folder
 	mkdir -p ${LOG_FOLDER}
+}
+
+# The following function iterates the test options and tries to match them with
+# an environment variable called FORCE_<TEST_OPTION> e.g. FORCE_WCP,
+# FORCE_THREADS etc.
+# If it finds one, it informs the user that the values have been overriden.
+override_test_options() {
+	for OPT in $TEST_OPTIONS; do
+		FORCE_OPT="FORCE_"${OPT}
+		if [[ -n ${!FORCE_OPT} ]]; then
+			OPT_VALS=${OPT}"_VALS"
+			eval ${OPT_VALS}='${!FORCE_OPT}'
+			orn_echo "Overriding ${OPT}: '${!OPT_VALS}'"
+		fi
+	done
 }
 
 init_logs() {
@@ -125,6 +151,13 @@ parse_args() {
 	else
 		red_echo "${4} is not a valid bench size option"
 		exit
+	fi
+
+	# ${5} shows if cached is used in this test.
+	# If cached is not used, unset "next ports for bench, so that requests
+	# can go directly to storage.
+	if [[ $5 == "no" ]]; then
+		restore_bench_ports
 	fi
 
 }
@@ -210,7 +243,7 @@ print_test() {
 	echo "(${CACHE_SIZE_AMPLIFY})"
 	$restore_text
 	echo -n "BENCH_OBJECTS=${BENCH_OBJECTS} BENCH_SIZE=${BENCH_SIZE}"
-	echo "(${BENCH_SIZE_AMPLIFY})"
+	echo "(${BENCH_SIZE_AMPLIFY}) BLOCK_SIZE=${BLOCK_SIZE}"
 	grn_echo "-------------------------------------------------------"
 
 	for P in ${BENCH_PORTS}; do
@@ -286,9 +319,11 @@ nuke_xseg() {
 }
 
 restore_bench_ports() {
+	suppress_output
 	for P in $BENCH_PORTS; do
 		eval $XSEG_BIN posix:cached: set-next ${P} 0
 	done
+	restore_output
 }
 
 run_background() {

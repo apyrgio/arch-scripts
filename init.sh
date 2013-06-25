@@ -7,7 +7,8 @@
 txtrst=$(tput sgr0)			# Reset text color
 txtred=$(tput setaf 1)			# Make text red
 txtgrn=$(tput setaf 2)			# Make text green
-txtgray="\033[1;30m"			# Make text light gray
+txtgrayB="\033[1;30m"			# Make text bold gray
+txtorn="\033[0;33m"			# Make text orange
 txtbluB=$(tput bold; tput setaf 4)	# Make text bold blue
 
 red_echo() {
@@ -18,6 +19,16 @@ red_echo() {
 	fi
 
 	echo $prm "${txtred}${1}${txtrst}"
+}
+
+orn_echo() {
+	local prm="-e"
+	if [[ $1 == "-n" ]]; then
+		prm=$prm" -n"
+		shift
+	fi
+
+	echo $prm "${txtorn}${1}${txtrst}"
 }
 
 grn_echo() {
@@ -47,11 +58,11 @@ gray_echo() {
 		shift
 	fi
 
-	echo $prm "${txtgray}${1}${txtrst}"
+	echo $prm "${txtgrayB}${1}${txtrst}"
 }
 
 shade_text() {
-	echo -e -n "${txtgray}"
+	echo -e -n "${txtgrayB}"
 }
 
 restore_text() {
