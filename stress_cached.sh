@@ -26,7 +26,10 @@ USE_CACHED="yes"
 
 # Remember, in Bash 0 is true and 1 is false
 while [[ -n $1 ]]; do
-	if [[ $1 = '-ff' ]]; then
+	if [[ $1 = '-l' ]]; then
+		shift
+		LOG_FOLDER=$1
+	elif [[ $1 = '-ff' ]]; then
 		shift
 		FF=0
 		FLIMIT=$1

@@ -5,19 +5,24 @@
 #####################
 
 usage() {
-	echo "Usage: ./stress_cached [-test <i>] [-ff <i>] [-until <i>]"
+	echo "Usage: ./stress_cached [-l <path>]"
+	echo "                       [-test <i>] [-ff <i>] [-until <i>]"
 	echo "                       [-bench <p>] [-seed <n>]"
 	echo "                       [-v <i>] [-p <n>] [-y] [-c] [-h]"
 	echo ""
-	echo "Options: -test <i>:  run only test <i>"
-	echo "         -ff <i>:    fast-forward to test <i>, run every test from "
-	echo "                     there on"
+	echo "Options: -l <path>:  Store logs in this path"
+	echo "                     (default: ${ARCH_SCRIPTS}/log/stress_cached)"
+	echo "         -test <i>:  run only test <i>"
+	echo "         -ff <i>:    fast-forward to test <i>, run every test"
+	echo "                     from there on"
 	echo "         -until <i>: run every test until AND test <i>"
 	echo "         -bench <p>: define number of bench instances"
-	echo "         -seed <n>:  use <n> as a seed for the test (9-digits only)"
+	echo "         -seed <n>:  use <n> as a seed for the test (9-digits"
+	echo "                     only)"
 	echo "         --pfiled:   use pfiled instead of sosd for storage"
 	echo "         -v <l>:     set verbosity level to <l>"
-	echo "         -p <n>:     profile CPU usage of cached using <n> samples"
+	echo "         -p <n>:     profile CPU usage of cached using <n>"
+	echo "                     samples"
 	echo "         -y:         do not wait between tests"
 	echo "         -c:         just clean the segment"
 	echo "         -h:         print this message"
@@ -48,7 +53,9 @@ usage() {
 init_binaries_and_folders() {
 	PITHOS_FOLDER=${ARCH_SCRIPTS}/pithos/pithos
 	ARCHIP_FOLDER=${ARCH_SCRIPTS}/pithos/archip
-	LOG_FOLDER=${ARCH_SCRIPTS}/log/stress_cached
+	if [[ -z $LOG_FOLDER ]]; then
+		LOG_FOLDER=${ARCH_SCRIPTS}/log/stress_cached
+	fi
 
 	SOSD_POOL=cached-blocks
 
