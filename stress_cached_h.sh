@@ -187,11 +187,21 @@ create_seed() {
 # 5) Finally, the output is fed for one last time to sed, which removes the
 #    backslash from the last line (the line with the (#) character.
 print_test() {
+	local echo=echo
+	local shade_text
+	local unshade_text
+	if [[ $USE_CACHED == "no" ]]; then
+		shade_text=shade_text
+		restore_text=restore_text
+	fi
+
 	echo ""
 	grn_echo "Summary of Test ${I_TEST} (SEED ${SEED}):"
 	echo "WCP=${WCP} THREADS=${THREADS} IODEPTH=${IODEPTH}"
+	$shade_text
 	echo -n "CACHE_OBJECTS=${CACHE_OBJECTS} CACHE_SIZE=${CACHE_SIZE}"
 	echo "(${CACHE_SIZE_AMPLIFY})"
+	$restore_text
 	echo -n "BENCH_OBJECTS=${BENCH_OBJECTS} BENCH_SIZE=${BENCH_SIZE}"
 	echo "(${BENCH_SIZE_AMPLIFY})"
 	grn_echo "-------------------------------------------------------"
@@ -201,9 +211,11 @@ print_test() {
 			| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
 		echo ""
 	done
+	$shade_text
 	eval "echo "${CACHED_COMMAND}""#"" \
 		| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
 	echo ""
+	$restore_text
 	eval "echo "${STORAGE_COMMAND}""#"" \
 		| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
 
