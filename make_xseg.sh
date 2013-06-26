@@ -49,7 +49,7 @@ cd $XSEG
 if [[ $CLEAN == "yes" ]]; then
 	eval make clean $PIPE
 fi
-eval make $PIPE
+eval make XSEG_DOMAIN_TARGETS=user $PIPE
 if [[ $INSTALL == "yes" ]]; then
 	eval make install $PIPE
 fi
