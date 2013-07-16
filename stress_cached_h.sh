@@ -10,7 +10,7 @@ usage() {
 	echo "                       [-bench <p>] [-seed <n>]"
 	echo "                       [-v <i>] [-p <n>] [-y] [-c] [-h]"
 	echo ""
-	echo "Options: -l <path>:  Store logs in this path"
+	echo "Options: -l <path>:  store logs in this path"
 	echo "                     default: ${ARCH_SCRIPTS}/log/stress_cached"
 	echo "                     permitted: ${HOME}/* or /tmp/*"
 	echo "         -test <i>:  run only test <i>"
@@ -24,6 +24,7 @@ usage() {
 	echo "         -v <l>:     set verbosity level to <l>"
 	echo "         -p <n>:     profile CPU usage of cached using <n>"
 	echo "                     samples"
+	echo "         -w:         warm-up before writing to cached"
 	echo "         -y:         do not wait between tests"
 	echo "         -c:         just clean the segment"
 	echo "         -h:         print this message"
@@ -58,7 +59,6 @@ usage() {
 	echo ""
 	echo "  e.g. FORCE_BLOCK_SIZE='4k 666k' ./stress_cached.sh"
 	echo ""
-
 }
 
 init_binaries_and_folders() {
@@ -99,7 +99,7 @@ override_test_options() {
 init_logs() {
 	local peer
 
-	for peer in bench cached $STORAGE; do
+	for peer in bench-warmup bench-write bench-read cached $STORAGE; do
 		LOG=${LOG_FOLDER}/"${peer}"${1}".log"
 
 		# Truncate previous logs

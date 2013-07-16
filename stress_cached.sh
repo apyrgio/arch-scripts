@@ -23,6 +23,7 @@ WAIT=0
 BENCH_OP=write
 USE_PFILED="no"
 USE_CACHED="yes"
+WARMUP="no"
 
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
@@ -60,6 +61,8 @@ while [[ -n $1 ]]; do
 		PROFILE=0
 		shift
 		CPU_SAMPLES=$1
+	elif [[ $1 = '-w' ]]; then
+		WARMUP="yes"
 	elif [[ $1 = '-y' ]]; then
 		WAIT=1
 	elif [[ $1 = '-c' ]]; then
@@ -109,16 +112,19 @@ create_seed $SEED
 
 BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
-		-ts ${BENCH_SIZE} -bs ${BLOCK_SIZE} --progress yes --iodepth ${IODEPTH}
-		--verify no ${RC} -l ${LOG_FOLDER}/bench${I_TEST}.log'
+		-ts ${BENCH_SIZE} -bs ${BLOCK_SIZE} --progress yes
+		--iodepth ${IODEPTH}
+		--verify full ${RC} -l ${LOG_FOLDER}/${BENCH_LOG}'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -mo ${CACHE_OBJECTS}
 		-ts ${CACHE_SIZE}
 		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
-PFILED_COMMAND='${PFILED_BIN} -g posix:cached: -p 0 -t ${T_PFILED} -v ${VERBOSITY}
+PFILED_COMMAND='${PFILED_BIN} -g posix:cached: -p 0 -t ${T_PFILED}
+		-v ${VERBOSITY}
 		--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
+		--prefix bench-{$SEED}-
 		-l ${LOG_FOLDER}/pfiled${I_TEST}.log'
 
 SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p 0 -t ${T_SOSD} -v ${VERBOSITY}
@@ -184,6 +190,7 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	# Make test-specific initializations
 	I_TEST=$I
 	init_logs ${I_TEST}
+	BENCH_LOG=bench-write${I_TEST}.log
 	parse_args $THREADS $CACHE_SIZE_AMPLIFY $BENCH_SIZE_AMPLIFY \
 		$BENCH_OBJECTS $USE_CACHED
 	print_test
@@ -210,7 +217,24 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	# Wait a bit to make sure both cached and chosen storage is up
 	sleep 1
 
+	# Start bench (warmup mode)
+	if [[ ($WARMUP == "yes" && $USE_CACHED == "yes") ]]; then
+		BENCH_LOG=bench-warmup${I_TEST}.log
+		BENCH_OP=write
+		PID_BENCH=""
+		for P in ${BENCH_PORTS}; do
+			run_background "${BENCH_COMMAND}"
+			PID_BENCH=${PID_BENCH}" $!"
+		done
+		echo -n "Waiting for bench to finish the warm-up... "
+		for PID in ${PID_BENCH}; do
+			wait ${PID}
+		done
+		grn_echo "DONE!"
+	fi
+
 	# Start bench (write mode)
+	BENCH_LOG=bench-write${I_TEST}.log
 	BENCH_OP=write
 	PID_BENCH=""
 	for P in ${BENCH_PORTS}; do
@@ -234,6 +258,7 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	fi
 
 	# Start bench (read mode)
+	BENCH_LOG=bench-read${I_TEST}.log
 	BENCH_OP=read
 	PID_BENCH=""
 	for P in ${BENCH_PORTS}; do
