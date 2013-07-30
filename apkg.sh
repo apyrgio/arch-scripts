@@ -58,7 +58,7 @@ fi
 
 if [[ $MAKE == "yes" ]]; then
 	cd $ARCH_DIR
-	devflow-autopkg -r -b $BUILD_DIR -r $REPO_DIR -k --no-sign
+	devflow-autopkg -b $BUILD_DIR -r $REPO_DIR --no-sign
 fi
 
 cd $BUILD_DIR
@@ -78,7 +78,7 @@ if [[ $INSTALL == "yes" ]]; then
 	DEB_PACKAGES=""
 	for pkg in $PACKAGES; do
 		pkg=${pkg}${VERSION}".deb"
-		if [[ ! -e $pkg ]]; then
+		if ! ls $pkg &> /dev/null; then
 			red_echo "Package \"${pkg}\" is missing. Aborting..."
 			exit
 		fi
