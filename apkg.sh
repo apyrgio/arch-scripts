@@ -44,11 +44,6 @@ while [[ -n $1 ]]; do
 	shift
 done
 
-if [[ ( $INSTALL = "yes" && $REMOVE = "yes" ) ]]; then
-	red_echo "Cannot install and remove packages simultaneously."
-	exit
-fi
-
 # Enter virtual-env
 source $VENV_DIR/bin/activate
 
@@ -74,6 +69,15 @@ PACKAGES='libxseg0
 
 VERSION='_*_amd64'
 
+if [[ $REMOVE == "yes" ]]; then
+	REV_PACKAGES=""
+	for pkg in $PACKAGES; do
+		REV_PACKAGES=${pkg}" "${REV_PACKAGES}
+	done
+	echo "$REV_PACKAGES"
+	eval apt-get remove $REV_PACKAGES
+fi
+
 if [[ $INSTALL == "yes" ]]; then
 	DEB_PACKAGES=""
 	for pkg in $PACKAGES; do
@@ -85,13 +89,6 @@ if [[ $INSTALL == "yes" ]]; then
 		DEB_PACKAGES=${DEB_PACKAGES}" "${pkg}
 	done
 	eval dpkg -i $DEB_PACKAGES
-elif [[ $REMOVE == "yes" ]]; then
-	REV_PACKAGES=""
-	for pkg in $PACKAGES; do
-		REV_PACKAGES=${pkg}" "${REV_PACKAGES}
-	done
-	echo "$REV_PACKAGES"
-	eval apt-get remove $REV_PACKAGES
 fi
 
 # Exit virtual environment
