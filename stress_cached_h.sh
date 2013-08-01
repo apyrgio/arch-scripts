@@ -5,7 +5,7 @@
 #####################
 
 usage() {
-	echo "Usage: ./stress_cached [-l <path>]"
+	echo "Usage: ./stress_cached [-l <path>] [-res <file>]"
 	echo "                       [-test <i>] [-ff <i>] [-until <i>]"
 	echo "                       [-bench <p>] [-seed <n>]"
 	echo "                       [-v <i>] [-p <n>] [-y] [-c] [-h]"
@@ -13,6 +13,8 @@ usage() {
 	echo "Options: -l <path>:  store logs in this path"
 	echo "                     default: ${ARCH_SCRIPTS}/log/stress_cached"
 	echo "                     permitted: ${HOME}/* or /tmp/*"
+	echo "         -r <path>:  activate bench reports and store them in "
+	echo "                     this path"
 	echo "         -test <i>:  run only test <i>"
 	echo "         -ff <i>:    fast-forward to test <i>, run every test"
 	echo "                     from there on"
@@ -48,7 +50,7 @@ usage() {
 	echo "* An easy way to check out the output would be to start 3 terminals"
 	echo "  and simply have them do: tail -F /var/log/stress_cached/cached*"
 	echo "  (or bench*, filed*). Thus, when a file is rm'ed or a new file"
-	echo "  with the sam prefix has been added, tail will read it and you won't"
+	echo "  with the same prefix has been added, tail will read it and you won't"
 	echo "  have to do anything."
 	echo ""
 	echo "* You can override the predefined-values of a test option by"
@@ -61,11 +63,23 @@ usage() {
 	echo ""
 }
 
+is_path_safe() {
+	if [[ ! $1 == ${HOME}* ]] &&
+		[[ ! $1 == "/tmp"* ]]; then
+		return 1
+	fi
+	return 0
+}
+
+
 init_binaries_and_folders() {
 	PITHOS_FOLDER=${ARCH_SCRIPTS}/pithos/pithos
 	ARCHIP_FOLDER=${ARCH_SCRIPTS}/pithos/archip
 	if [[ -z $LOG_FOLDER ]]; then
 		LOG_FOLDER=${ARCH_SCRIPTS}/log/stress_cached
+	fi
+	if [[ -z $REP_FOLDER ]]; then
+		REP_FOLDER=${ARCH_SCRIPTS}/report/stress_cached
 	fi
 
 	SOSD_POOL=cached-blocks

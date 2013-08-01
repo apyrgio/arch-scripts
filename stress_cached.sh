@@ -24,16 +24,24 @@ BENCH_OP=write
 USE_FILED="no"
 USE_CACHED="yes"
 WARMUP="no"
+REPORT="no"
 
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
 		shift
-		LOG_FOLDER=$1
-		if [[ ! $LOG_FOLDER == ${HOME}* ]] &&
-			[[ ! $LOG_FOLDER == "/tmp"* ]]; then
+		if ! is_path_safe $1; then
 			red_echo "-l ${1}: Log path is unsafe"
 			exit
 		fi
+		LOG_FOLDER=$1
+	elif [[ $1 = '-r' ]]; then
+		REPORT="yes"
+		shift
+		if ! is_path_safe $1; then
+			red_echo "-r ${1}: Report path is unsafe"
+			exit
+		fi
+		REP_FOLDER=$1
 	elif [[ $1 = '-ff' ]]; then
 		shift
 		FF=0
@@ -112,9 +120,9 @@ create_seed $SEED
 
 BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
-		-ts ${BENCH_SIZE} -bs ${BLOCK_SIZE} --progress yes
-		--iodepth ${IODEPTH}
-		--verify full ${RC} -l ${LOG_FOLDER}/${BENCH_LOG}'
+		-ts ${BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
+		--ping yes --progress yes --ptype both --pinterval 5%
+		--verify no ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -mo ${CACHE_OBJECTS}
@@ -191,6 +199,9 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	I_TEST=$I
 	init_logs ${I_TEST}
 	BENCH_LOG=bench-write${I_TEST}.log
+	if [[ $REPORT="yes" ]]; then
+		RES="-res ${REP_FOLDER}/report-${BENCH_LOG}"
+	fi
 	parse_args $THREADS $CACHE_SIZE_AMPLIFY $BENCH_SIZE_AMPLIFY \
 		$BENCH_OBJECTS $USE_CACHED
 	print_test
