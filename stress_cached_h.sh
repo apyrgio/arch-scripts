@@ -20,7 +20,7 @@ usage() {
 	echo "         -bench <p>: define number of bench instances"
 	echo "         -seed <n>:  use <n> as a seed for the test (9-digits"
 	echo "                     only)"
-	echo "         --pfiled:   use pfiled instead of sosd for storage"
+	echo "         --filed:    use filed instead of sosd for storage"
 	echo "         -v <l>:     set verbosity level to <l>"
 	echo "         -p <n>:     profile CPU usage of cached using <n>"
 	echo "                     samples"
@@ -47,7 +47,7 @@ usage() {
 	echo ""
 	echo "* An easy way to check out the output would be to start 3 terminals"
 	echo "  and simply have them do: tail -F /var/log/stress_cached/cached*"
-	echo "  (or bench*, pfiled*). Thus, when a file is rm'ed or a new file"
+	echo "  (or bench*, filed*). Thus, when a file is rm'ed or a new file"
 	echo "  with the sam prefix has been added, tail will read it and you won't"
 	echo "  have to do anything."
 	echo ""
@@ -74,7 +74,7 @@ init_binaries_and_folders() {
 	XSEG_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/xseg"
 	BENCH_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-bench"
 	CACHED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-cached"
-	PFILED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-pfiled"
+	FILED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-filed"
 	SOSD_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-sosd"
 
 	# Create log folder
@@ -117,12 +117,12 @@ parse_args() {
 	# ${1} is for threads
 	if [[ ${1} = 'single' ]]; then
 		T_SOSD=1
-		T_PFILED=64
+		T_FILED=64
 		T_CACHED=1
 		T_BENCH=1
 	elif [[ ${1} = 'multi' ]]; then
 		T_SOSD=1
-		T_PFILED=64
+		T_FILED=64
 		T_CACHED=4
 		T_BENCH=1
 	else
@@ -279,25 +279,25 @@ restore_output() {
 nuke_xseg() {
 	echo -n "Nuking xseg... "
 
-	# Check before deleting pfiled files
-	if [[ $USE_PFILED = "yes" ]] &&
+	# Check before deleting filed files
+	if [[ $USE_FILED = "yes" ]] &&
 		[[ ( ! "$(basename $PITHOS_FOLDER)" == pithos ||
 		! "$(basename $ARCHIP_FOLDER)" == archip ) ]]; then
 		red_echo "FAILED!"
 		echo ""
-		red_echo "There's something wrong with the pfiled folders"
+		red_echo "There's something wrong with the filed folders"
 		red_echo "and you've just dodged a bullet..."
 		exit
 	fi
 
 	suppress_output
 
-	if [[ $USE_PFILED = "yes" ]]; then
-		# Delete pfiled files
+	if [[ $USE_FILED = "yes" ]]; then
+		# Delete filed files
 		find ${PITHOS_FOLDER} -name "*" -exec rm -rf {} \;
 		find ${ARCHIP_FOLDER} -name "*" -exec rm -rf {} \;
 
-		# Re-build pfiled folders
+		# Re-build filed folders
 		mkdir -p ${PITHOS_FOLDER}
 		mkdir -p ${ARCHIP_FOLDER}
 	fi
@@ -305,7 +305,7 @@ nuke_xseg() {
 	# Clear previous tries
 	killall -9 archip-bench
 	killall -9 archip-cached
-	killall -9 archip-pfiled
+	killall -9 archip-filed
 	killall -9 archip-sosd
 
 	# Re-build segment

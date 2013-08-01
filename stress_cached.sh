@@ -21,7 +21,7 @@ PROFILE=1
 I=0
 WAIT=0
 BENCH_OP=write
-USE_PFILED="no"
+USE_FILED="no"
 USE_CACHED="yes"
 WARMUP="no"
 
@@ -52,8 +52,8 @@ while [[ -n $1 ]]; do
 	elif [[ $1 = '-seed' ]]; then
 		shift
 		SEED=$1
-	elif [[ $1 = '--pfiled' ]]; then
-		USE_PFILED="yes"
+	elif [[ $1 = '--filed' ]]; then
+		USE_FILED="yes"
 	elif [[ $1 = '-v' ]]; then
 		shift
 		VERBOSITY=$1
@@ -121,19 +121,19 @@ CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-ts ${CACHE_SIZE}
 		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
-PFILED_COMMAND='${PFILED_BIN} -g posix:cached: -p 0 -t ${T_PFILED}
+FILED_COMMAND='${FILED_BIN} -g posix:cached: -p 0 -t ${T_FILED}
 		-v ${VERBOSITY}
 		--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
 		--prefix bench-{$SEED}-
-		-l ${LOG_FOLDER}/pfiled${I_TEST}.log'
+		-l ${LOG_FOLDER}/filed${I_TEST}.log'
 
 SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p 0 -t ${T_SOSD} -v ${VERBOSITY}
 		--pool ${SOSD_POOL}
 		-l ${LOG_FOLDER}/sosd${I_TEST}.log'
 
-if [[ $USE_PFILED == "yes" ]]; then
-	STORAGE_COMMAND=$PFILED_COMMAND
-	STORAGE="pfiled"
+if [[ $USE_FILED == "yes" ]]; then
+	STORAGE_COMMAND=$FILED_COMMAND
+	STORAGE="filed"
 else
 	STORAGE_COMMAND=$SOSD_COMMAND
 	STORAGE="sosd"
