@@ -121,7 +121,7 @@ create_seed $SEED
 BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
-		--ping yes --progress yes --ptype both --pinterval 5%
+		--ping yes --progress yes
 		--verify no ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
@@ -199,8 +199,8 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	I_TEST=$I
 	init_logs ${I_TEST}
 	BENCH_LOG=bench-write${I_TEST}.log
-	if [[ $REPORT="yes" ]]; then
-		RES="-res ${REP_FOLDER}/report-${BENCH_LOG}"
+	if [[ $REPORT == "yes" ]]; then
+		RES='-res ${REP_FOLDER}/report-${BENCH_LOG}'
 	fi
 	parse_args $THREADS $CACHE_SIZE_AMPLIFY $BENCH_SIZE_AMPLIFY \
 		$BENCH_OBJECTS $USE_CACHED

@@ -78,9 +78,6 @@ init_binaries_and_folders() {
 	if [[ -z $LOG_FOLDER ]]; then
 		LOG_FOLDER=${ARCH_SCRIPTS}/log/stress_cached
 	fi
-	if [[ -z $REP_FOLDER ]]; then
-		REP_FOLDER=${ARCH_SCRIPTS}/report/stress_cached
-	fi
 
 	SOSD_POOL=cached-blocks
 
@@ -261,7 +258,7 @@ print_test() {
 	grn_echo "-------------------------------------------------------"
 
 	for P in ${BENCH_PORTS}; do
-		eval "echo "${BENCH_COMMAND}""#"" \
+		eval "echo "$(eval "echo "${BENCH_COMMAND}""#"") \
 			| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
 		echo ""
 	done

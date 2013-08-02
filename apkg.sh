@@ -65,6 +65,7 @@ PACKAGES='libxseg0
 	archipelago-modules-dkms
 	archipelago
 	archipelago-dbg
+	archipelago-rados
 	archipelago-ganeti'
 
 VERSION='_*_amd64'
