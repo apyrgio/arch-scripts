@@ -25,6 +25,9 @@ USE_FILED="no"
 USE_CACHED="yes"
 WARMUP="no"
 REPORT="no"
+PROGRESS="yes"
+RTYPE="req,lat,io"
+
 
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
@@ -42,6 +45,12 @@ while [[ -n $1 ]]; do
 			exit
 		fi
 		REP_FOLDER=$1
+	elif [[ $1 = '-prog' ]]; then
+		shift
+		PROG=$1
+	elif [[ $1 = '-rtype' ]]; then
+		shift
+		RTYPE=$1
 	elif [[ $1 = '-ff' ]]; then
 		shift
 		FF=0
@@ -121,7 +130,7 @@ create_seed $SEED
 BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
-		--ping yes --progress yes
+		--ping yes --progress ${PROG} --rtype ${RTYPE}
 		--verify no ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
@@ -229,7 +238,7 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	sleep 1
 
 	# Start bench (warmup mode)
-	if [[ ($WARMUP == "yes" && $USE_CACHED == "yes") ]]; then
+	if [[ ($WARMUP == "yes") ]]; then
 		BENCH_LOG=bench-warmup${I_TEST}.log
 		BENCH_OP=write
 		PID_BENCH=""

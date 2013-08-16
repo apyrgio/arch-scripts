@@ -5,7 +5,8 @@
 #####################
 
 usage() {
-	echo "Usage: ./stress_cached [-l <path>] [-res <file>]"
+	echo "Usage: ./stress_cached [-l <path>] [-r <path>]"
+	echo "                       [-prog <p>] [-rtype <t>]"
 	echo "                       [-test <i>] [-ff <i>] [-until <i>]"
 	echo "                       [-bench <p>] [-seed <n>]"
 	echo "                       [-v <i>] [-p <n>] [-y] [-c] [-h]"
@@ -15,6 +16,8 @@ usage() {
 	echo "                     permitted: ${HOME}/* or /tmp/*"
 	echo "         -r <path>:  activate bench reports and store them in "
 	echo "                     this path"
+	echo "         -prog <p>:  choose progress type"
+	echo "         -rtype <t>: choose report type"
 	echo "         -test <i>:  run only test <i>"
 	echo "         -ff <i>:    fast-forward to test <i>, run every test"
 	echo "                     from there on"
