@@ -25,7 +25,7 @@ USE_FILED="no"
 USE_CACHED="yes"
 WARMUP="no"
 REPORT="no"
-PROGRESS="yes"
+PROG="yes"
 RTYPE="req,lat,io"
 
 
@@ -131,7 +131,7 @@ BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
 		--ping yes --progress ${PROG} --rtype ${RTYPE}
-		--verify no ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
+		--verify full ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -mo ${CACHE_OBJECTS}
