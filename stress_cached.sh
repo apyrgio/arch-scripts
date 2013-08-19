@@ -27,7 +27,7 @@ WARMUP="no"
 REPORT="no"
 PROG="yes"
 RTYPE="req,lat,io"
-
+RPOST='${I_TEST}'
 
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
@@ -51,6 +51,9 @@ while [[ -n $1 ]]; do
 	elif [[ $1 = '-rtype' ]]; then
 		shift
 		RTYPE=$1
+	elif [[ $1 = '-rpost' ]]; then
+		shift
+		RPOST=$1
 	elif [[ $1 = '-ff' ]]; then
 		shift
 		FF=0
@@ -207,7 +210,9 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	# Make test-specific initializations
 	I_TEST=$I
 	init_logs ${I_TEST}
-	BENCH_LOG=bench-write${I_TEST}.log
+	# We eval the following since ${RPOST} may actually point to another
+	# variable
+	BENCH_LOG=$(eval "echo bench-write${RPOST}.log")
 	if [[ $REPORT == "yes" ]]; then
 		RES='-res ${REP_FOLDER}/report-${BENCH_LOG}'
 	fi
