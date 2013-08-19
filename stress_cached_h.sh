@@ -270,7 +270,7 @@ print_test() {
 	grn_echo "-------------------------------------------------------"
 
 	for P in ${BENCH_PORTS}; do
-		eval "echo "$(eval "echo "${BENCH_COMMAND}""#"") \
+		eval "echo "$(eval "echo "$(eval "echo "${BENCH_COMMAND}""#"")) \
 			| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
 		echo ""
 	done
@@ -350,7 +350,7 @@ restore_bench_ports() {
 }
 
 run_background() {
-	eval $(eval echo ${1})" &"
+	eval $(eval "echo "$(eval "echo "${1}))" &"
 }
 
 run_profile_background() {

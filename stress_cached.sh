@@ -210,11 +210,11 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	# Make test-specific initializations
 	I_TEST=$I
 	init_logs ${I_TEST}
-	# We eval the following since ${RPOST} may actually point to another
-	# variable
-	BENCH_LOG=$(eval "echo bench-write${RPOST}.log")
+	BENCH_LOG='bench-${BENCH_LOG_OP}${I_TEST}.log'
+	BENCH_LOG_OP=write
 	if [[ $REPORT == "yes" ]]; then
-		RES='-res ${REP_FOLDER}/report-${BENCH_LOG}'
+		BENCH_REPORT='report-bench-${BENCH_LOG_OP}${RPOST}.log'
+		RES='-res ${REP_FOLDER}/${BENCH_REPORT}'
 	fi
 	parse_args $THREADS $CACHE_OBJECTS $CACHE_SIZE \
 		$BENCH_SIZE $USE_CACHED
@@ -244,7 +244,7 @@ for USE_CACHED in $USE_CACHED_VALS; do
 
 	# Start bench (warmup mode)
 	if [[ ($WARMUP == "yes") ]]; then
-		BENCH_LOG=bench-warmup${I_TEST}.log
+		BENCH_LOG_OP=warmup
 		BENCH_OP=write
 		PID_BENCH=""
 		for P in ${BENCH_PORTS}; do
@@ -259,7 +259,7 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	fi
 
 	# Start bench (write mode)
-	BENCH_LOG=bench-write${I_TEST}.log
+	BENCH_LOG_OP=write
 	BENCH_OP=write
 	PID_BENCH=""
 	for P in ${BENCH_PORTS}; do
@@ -283,7 +283,7 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	fi
 
 	# Start bench (read mode)
-	BENCH_LOG=bench-read${I_TEST}.log
+	BENCH_LOG_OP=read
 	BENCH_OP=read
 	PID_BENCH=""
 	for P in ${BENCH_PORTS}; do
