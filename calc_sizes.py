@@ -13,7 +13,7 @@ def toNumber(size):
     else:
         raise Exception("Invalid unit")
 
-    # Check this here since in `in' operator the '""' is matched
+    # Check this here since the `in' operator matches the empty parentheses
     if unit is "":
         return num
 
@@ -29,6 +29,7 @@ def toNumber(size):
 
 def toSize(num):
     units = ["K", "M", "G"]
+    unit = ""
 
     while num >= 1024:
         num = num / 1024
@@ -47,7 +48,7 @@ class Dependency:
         self.done = 0
 
     def calculate(self, os):
-        print "Calculating %s" % (self.name)
+        #print "Calculating %s" % (self.name)
 
         if self.done:
             return
@@ -61,19 +62,16 @@ class Dependency:
 
             if self.name == "co":
                 expr = "%d / %d %s %s" % (dep_val, os_val, self.sep, self.val)
-                self.val = eval(expr)
             elif dep.name == "co":
                 expr = "%d * %d %s %s" % (dep_val, os_val, self.sep, self.val)
-                self.val = eval(expr)
-                self.val = toSize(self.val)
             else:
                 expr = "%d %s %s" % (dep_val, self.sep, self.val)
-                self.val = eval(expr)
-                self.val = toSize(self.val)
 
+            self.val = int(eval(expr))
+            self.val = toSize(self.val)
             self.done = 1
 
-        print "%s is done (%s)" % (self.name, str(self.val))
+        #print "%s is done (%s)" % (self.name, str(self.val))
 
 
 dependencies = {
@@ -93,14 +91,37 @@ def separate(s):
 
     return ("", "", s)
 
-
+# `main' expects the following arguments:
+# $1: object size
+# $2: block size
+# $3: cache objects
+# $4: cache size
+# $5: bench size
+# [$6]: request cap
+#
+# Arguments $3 to $5 can be in size notation (4096, 4k, 4K; all three equates
+# to the same size) or dependent to another. Dependency is defined as
+# following:
+#                   $arg$op$val     (e.g cs/4, bs*64)
+#
+# where:
+#       $arg is the argument where we depend on. It must either be "co" for
+#       cache objects, "cs" for cache size, "bs" for bench size
+#       $op is the dendency relationship between the two arguments and must
+#       either be "/" for division or "*" for multiplication
+#       $val is the constant that is used for the dependency relationship and
+#       it must be a number.
+#
+# Finally argument $6 is an optional one that converts the bench size to
+# number of requests if the string is "rc".
 def main(argv = None):
     if argv == None:
         argv = sys.argv
 
-    os = argv[1]
+    os = argv[1]    # Object size
+    bls = argv[2]   # Block size
 
-    for tup in [("co", 2), ("cs", 3), ("bs", 4)]:
+    for tup in [("co", 3), ("cs", 4), ("bs", 5)]:
         arg = argv[tup[1]]
         sparts = separate(arg)
         dep = dependencies[tup[0]]
@@ -112,16 +133,26 @@ def main(argv = None):
         dep.sep = sparts[1]
         dep.val = sparts[2]
 
-    sys.stdout.write("Original:\n")
-    pprint(dependencies)
+    #print "Original:\n"
+    #pprint(dependencies)
 
     for key, value in dependencies.iteritems():
         if not value.done:
             value.calculate(os)
 
-    sys.stdout.write("\nFinal:\n")
-    pprint(dependencies)
+    if len(argv) == 7:
+        bls = toNumber(bls)
+        bs = dependencies["bs"].val
+        bs = toNumber(bs)
+        bs = bs / bls
+        bs = toSize(bs)
+        dependencies["bs"].val = bs
 
+    #print "\nFinal:\n"
+    #pprint(dependencies)
 
+    print ("%s %s %s" %
+            (dependencies["co"].val, dependencies["cs"].val,
+                dependencies["bs"].val))
 if __name__ == "__main__":
     sys.exit(main())
