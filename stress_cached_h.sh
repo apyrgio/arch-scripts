@@ -18,6 +18,7 @@ usage() {
 	echo "                     this path"
 	echo "         -prog <p>:  choose progress type"
 	echo "         -rtype <t>: choose report type"
+	echo "         -rpost <p>: use this postfix for reports before '.log'"
 	echo "         -test <i>:  run only test <i>"
 	echo "         -ff <i>:    fast-forward to test <i>, run every test"
 	echo "                     from there on"
@@ -144,36 +145,44 @@ parse_args() {
 		exit
 	fi
 
-	# ${2} is for cache size
-	CACHE_SIZE=$( python -c "print int(${CACHE_OBJECTS} * ${2%x} * 4)" )'M'
-	if [[ ${CACHE_OBJECTS} = 4 ]]; then
-		NR_OPS=4
+	# ${2}, ${3}, ${4} are the cache objects (co), cache size (cs) and
+	# bench size (bs) arguments respectively. These, along with the object
+	# size and block size, must be passed to calc_sizes.py in order to be
+	# processed and to resolve the dependencies between them (see more in
+	# the help in calc_sizes.py).
+
+	if [[ ${BENCH_OBJECTS} == "holyshit" ]]; then
+		local rc="rc"
+	fi
+
+	ORIG_CACHE_OBJECTS=$CACHE_OBJECTS
+	ORIG_CACHE_SIZE=$CACHE_SIZE
+	ORIG_BENCH_SIZE=$BENCH_SIZE
+
+	ARG_SIZES=$(python ${ARCH_SCRIPTS}/calc_sizes.py 4M ${BLOCK_SIZE} ${2} ${3} ${4} ${rc})
+	FIN_CACHE_OBJECTS=$(echo ${ARG_SIZES} | cut -d " " -f 1)
+	FIN_CACHE_SIZE=$(echo ${ARG_SIZES} | cut -d " " -f 2)
+	FIN_BENCH_SIZE=$(echo ${ARG_SIZES} | cut -d " " -f 3)
+
+	if [[ ${BENCH_OBJECTS} == "holyshit" ]]; then
+		RC="-rc ${FIN_BENCH_SIZE}"
+		FIN_BENCH_SIZE="999G"
+	else
+		RC=""
+	fi
+
+	if [[ ${FIN_CACHE_OBJECTS} -lt 16 ]]; then
+		NR_OPS=${FIN_CACHE_OBJECTS}
 	else
 		NR_OPS=16
 	fi
 
-	# ${3} and ${4} is for bench size and request cap
-	BENCH_SIZE=$( python -c "print int(${CACHE_SIZE%M} * ${3%x})" )'M'
-	if [[ ${4} = 'bounded' ]]; then
-		RC=''
-	elif [[ ${4} = 'holyshit' ]]; then
-		local requests
-		requests=$(( ${BENCH_SIZE%M} / 4 ))'K'
-
-		RC="-rc ${requests}"
-		BENCH_SIZE="999G"
-	else
-		red_echo "${4} is not a valid bench size option"
-		exit
-	fi
-
 	# ${5} shows if cached is used in this test.
-	# If cached is not used, unset "next ports for bench, so that requests
+	# If cached is not used, unset "next" ports for bench, so that requests
 	# can go directly to storage.
 	if [[ $5 == "no" ]]; then
 		restore_bench_ports
 	fi
-
 }
 
 # Depending on the number of bench instances, we calculate what are the
@@ -253,11 +262,11 @@ print_test() {
 	grn_echo "Summary of Test ${I_TEST} (SEED ${SEED}):"
 	echo "WCP=${WCP} THREADS=${THREADS} IODEPTH=${IODEPTH}"
 	$shade_text
-	echo -n "CACHE_OBJECTS=${CACHE_OBJECTS} CACHE_SIZE=${CACHE_SIZE}"
-	echo "(${CACHE_SIZE_AMPLIFY})"
+	echo -n "CACHE_OBJECTS=${FIN_CACHE_OBJECTS}($ORIG_CACHE_OBJECTS) "
+	echo "CACHE_SIZE=${FIN_CACHE_SIZE}(${ORIG_CACHE_SIZE})"
 	$restore_text
-	echo -n "BENCH_OBJECTS=${BENCH_OBJECTS} BENCH_SIZE=${BENCH_SIZE}"
-	echo "(${BENCH_SIZE_AMPLIFY}) BLOCK_SIZE=${BLOCK_SIZE}"
+	echo -n "BENCH_OBJECTS=${BENCH_OBJECTS} BENCH_SIZE=${FIN_BENCH_SIZE}"
+	echo "(${ORIG_BENCH_SIZE}) BLOCK_SIZE=${BLOCK_SIZE}"
 	grn_echo "-------------------------------------------------------"
 
 	for P in ${BENCH_PORTS}; do

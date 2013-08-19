@@ -132,13 +132,13 @@ create_seed $SEED
 
 BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
-		-ts ${BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
+		-ts ${FIN_BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
 		--ping yes --progress ${PROG} --rtype ${RTYPE}
-		--verify full ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
+		--verify no ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
-		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS} -mo ${CACHE_OBJECTS}
-		-ts ${CACHE_SIZE}
+		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS}
+		-mo ${FIN_CACHE_OBJECTS} -ts ${FIN_CACHE_SIZE}
 		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
 FILED_COMMAND='${FILED_BIN} -g posix:cached: -p 0 -t ${T_FILED}
@@ -163,16 +163,16 @@ fi
 # Initialize test options #
 ###########################
 
-TEST_OPTIONS='WCP CACHE_OBJECTS CACHE_SIZE_AMPLIFY IODEPTH THREADS
-	BENCH_OBJECTS BENCH_SIZE_AMPLIFY BLOCK_SIZE USE_CACHED'
+TEST_OPTIONS='WCP CACHE_OBJECTS CACHE_SIZE IODEPTH THREADS
+	BENCH_OBJECTS BENCH_SIZE BLOCK_SIZE USE_CACHED'
 
 WCP_VALS="writeback writethrough"
 CACHE_OBJECTS_VALS="4 16 64 512"
-CACHE_SIZE_AMPLIFY_VALS="2x 1x 0.5x"
+CACHE_SIZE_VALS="co*2 co*1 co/2"
 IODEPTH_VALS="1 16"
 THREADS_VALS="single multi"
 BENCH_OBJECTS_VALS="bounded holyshit"
-BENCH_SIZE_AMPLIFY_VALS="0.25x 0.5x 1x 1.5x"
+BENCH_SIZE_VALS="co/4 co/2 co*1 co*1.5"
 BLOCK_SIZE_VALS="4k 8k 32k 128k 256k 1M 4M"
 USE_CACHED_VALS="yes no"
 
@@ -185,11 +185,11 @@ override_test_options
 
 for WCP in $WCP_VALS; do
 for CACHE_OBJECTS in $CACHE_OBJECTS_VALS; do
-for CACHE_SIZE_AMPLIFY in $CACHE_SIZE_AMPLIFY_VALS; do
+for CACHE_SIZE in $CACHE_SIZE_VALS; do
 for IODEPTH in $IODEPTH_VALS; do
 for THREADS in $THREADS_VALS; do
 for BENCH_OBJECTS in $BENCH_OBJECTS_VALS; do
-for BENCH_SIZE_AMPLIFY in $BENCH_SIZE_AMPLIFY_VALS; do
+for BENCH_SIZE in $BENCH_SIZE_VALS; do
 for BLOCK_SIZE in $BLOCK_SIZE_VALS; do
 for USE_CACHED in $USE_CACHED_VALS; do
 
@@ -216,8 +216,8 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	if [[ $REPORT == "yes" ]]; then
 		RES='-res ${REP_FOLDER}/report-${BENCH_LOG}'
 	fi
-	parse_args $THREADS $CACHE_SIZE_AMPLIFY $BENCH_SIZE_AMPLIFY \
-		$BENCH_OBJECTS $USE_CACHED
+	parse_args $THREADS $CACHE_OBJECTS $CACHE_SIZE \
+		$BENCH_SIZE $USE_CACHED
 	print_test
 
 	# Determine if we need to wait for user prompt
