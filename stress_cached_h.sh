@@ -92,8 +92,11 @@ init_binaries_and_folders() {
 	FILED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-filed"
 	SOSD_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-sosd"
 
-	# Create log folder
+	# Create necessary folders
 	mkdir -p ${LOG_FOLDER}
+	if [[ -n ${REP_FOLDER} ]]; then
+		mkdir -p ${REP_FOLDER}
+	fi
 }
 
 # The following function iterates the test options and tries to match them with
