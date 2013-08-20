@@ -179,6 +179,16 @@ USE_CACHED_VALS="yes no"
 # Check if the user has provided his own values for a test option
 override_test_options
 
+##############
+# Bench logs #
+##############
+
+BENCH_LOG='bench-${BENCH_LOG_OP}${I_TEST}.log'
+if [[ $REPORT == "yes" ]]; then
+	BENCH_REPORT='report-bench-${BENCH_LOG_OP}${RPOST}.log'
+	RES="-res ${REP_FOLDER}/${BENCH_REPORT}"
+fi
+
 #############
 # Main loop #
 #############
@@ -210,12 +220,7 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	# Make test-specific initializations
 	I_TEST=$I
 	init_logs ${I_TEST}
-	BENCH_LOG='bench-${BENCH_LOG_OP}${I_TEST}.log'
 	BENCH_LOG_OP=write
-	if [[ $REPORT == "yes" ]]; then
-		BENCH_REPORT='report-bench-${BENCH_LOG_OP}${RPOST}.log'
-		RES='-res ${REP_FOLDER}/${BENCH_REPORT}'
-	fi
 	parse_args $THREADS $CACHE_OBJECTS $CACHE_SIZE \
 		$BENCH_SIZE $USE_CACHED
 	print_test
