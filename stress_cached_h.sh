@@ -133,15 +133,10 @@ init_logs() {
 
 parse_args() {
 	# ${1} is for threads
-	if [[ ${1} = 'single' ]]; then
+	if [[ ${1} -gt 0 ]]; then
 		T_SOSD=1
 		T_FILED=64
-		T_CACHED=1
-		T_BENCH=1
-	elif [[ ${1} = 'multi' ]]; then
-		T_SOSD=1
-		T_FILED=64
-		T_CACHED=4
+		T_CACHED=${1}
 		T_BENCH=1
 	else
 		red_echo "${1} is not a valid thread option"
@@ -162,7 +157,8 @@ parse_args() {
 	ORIG_CACHE_SIZE=$CACHE_SIZE
 	ORIG_BENCH_SIZE=$BENCH_SIZE
 
-	ARG_SIZES=$(python ${ARCH_SCRIPTS}/calc_sizes.py 4M ${BLOCK_SIZE} ${2} ${3} ${4} ${rc})
+	ARG_SIZES=$(python ${ARCH_SCRIPTS}/calc_sizes.py \
+		4M ${BLOCK_SIZE} ${2} ${3} ${4} ${rc})
 	FIN_CACHE_OBJECTS=$(echo ${ARG_SIZES} | cut -d " " -f 1)
 	FIN_CACHE_SIZE=$(echo ${ARG_SIZES} | cut -d " " -f 2)
 	FIN_BENCH_SIZE=$(echo ${ARG_SIZES} | cut -d " " -f 3)
@@ -174,7 +170,7 @@ parse_args() {
 		RC=""
 	fi
 
-	if [[ ${FIN_CACHE_OBJECTS} -lt 16 ]]; then
+	if [[ ${FIN_CACHE_OBJECTS} -lt 16 ]] 2>/dev/null ; then
 		NR_OPS=${FIN_CACHE_OBJECTS}
 	else
 		NR_OPS=16
