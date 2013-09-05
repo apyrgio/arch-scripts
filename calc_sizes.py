@@ -89,6 +89,9 @@ def separate(s):
                 raise Exception("Dependency is invalid")
             return sparts
 
+    if s in dependencies:
+        return (s, "*", 1)
+
     return ("", "", s)
 
 # `main' expects the following arguments:
