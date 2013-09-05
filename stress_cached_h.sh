@@ -23,6 +23,7 @@ usage() {
 	echo "         -ff <i>:    fast-forward to test <i>, run every test"
 	echo "                     from there on"
 	echo "         -until <i>: run every test until AND test <i>"
+	echo "         -verify <m>:set verification mode <m> for bench"
 	echo "         -bench <p>: define number of bench instances"
 	echo "         -seed <n>:  use <n> as a seed for the test (9-digits"
 	echo "                     only)"
@@ -153,9 +154,9 @@ parse_args() {
 		local rc="rc"
 	fi
 
-	ORIG_CACHE_OBJECTS=$CACHE_OBJECTS
-	ORIG_CACHE_SIZE=$CACHE_SIZE
-	ORIG_BENCH_SIZE=$BENCH_SIZE
+	ORIG_CACHE_OBJECTS=$2
+	ORIG_CACHE_SIZE=$3
+	ORIG_BENCH_SIZE=$4
 
 	ARG_SIZES=$(python ${ARCH_SCRIPTS}/calc_sizes.py \
 		4M ${BLOCK_SIZE} ${2} ${3} ${4} ${rc})

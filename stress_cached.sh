@@ -28,6 +28,7 @@ REPORT="no"
 PROG="yes"
 RTYPE="req,lat,io"
 RPOST='${I_TEST}'
+VERIFY='meta'
 
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
@@ -66,6 +67,9 @@ while [[ -n $1 ]]; do
 		shift
 		UNTIL=0
 		ULIMIT=$1
+	elif [[ $1 = '-verify' ]]; then
+		shift
+		VERIFY=$1
 	elif [[ $1 = '-bench' ]]; then
 		shift
 		BENCH_INSTANCES=$1
@@ -134,7 +138,7 @@ BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${FIN_BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
 		--ping yes --progress ${PROG} --rtype ${RTYPE}
-		--verify no ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
+		--verify $VERIFY ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS}
