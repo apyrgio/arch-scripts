@@ -44,6 +44,11 @@ while [[ -n $1 ]]; do
 	shift
 done
 
+# Initialize dirs
+
+mkdir -p $REPO_DIR
+mkdir -p $BUILD_DIR
+
 # Enter virtual-env
 source $VENV_DIR/bin/activate
 
