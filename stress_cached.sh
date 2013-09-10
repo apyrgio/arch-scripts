@@ -30,6 +30,7 @@ RTYPE="req,lat,io"
 RPOST='${I_TEST}'
 VERIFY="meta"
 BE_GENTLE="hellno"
+RESTART_CACHED="no"
 
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
@@ -81,6 +82,8 @@ while [[ -n $1 ]]; do
 		USE_FILED="yes"
 	elif [[ $1 = '--gentle' ]]; then
 		BE_GENTLE="yes"
+	elif [[ $1 = '--restart' ]]; then
+		RESTART_CACHED="yes"
 	elif [[ $1 = '-v' ]]; then
 		shift
 		VERBOSITY=$1
@@ -293,6 +296,18 @@ for USE_CACHED in $USE_CACHED_VALS; do
 		sleep 1
 		nuke_xseg
 		continue
+	fi
+
+	# (Optional) Restart cached
+	if [[ $RESTART_CACHED == "yes" ]] &&
+		[[ $USE_CACHED == "yes" ]]; then
+		echo -n "Restarting cached... "
+		killall archip-cached
+		wait $PID_CACHED
+		run_background "${CACHED_COMMAND}"
+		PID_CACHED=$!
+		grn_echo "DONE!"
+		sleep 1
 	fi
 
 	# Start bench (read mode)

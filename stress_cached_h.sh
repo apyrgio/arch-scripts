@@ -28,6 +28,8 @@ usage() {
 	echo "         -seed <n>:  use <n> as a seed for the test (9-digits"
 	echo "                     only)"
 	echo "         --filed:    use filed instead of sosd for storage"
+	echo "         --gentle:   wait for cached to exit before nuking xseg"
+	echo "         --restart:  restart cached before reading from it"
 	echo "         -v <l>:     set verbosity level to <l>"
 	echo "         -p <n>:     profile CPU usage of cached using <n>"
 	echo "                     samples"
