@@ -28,7 +28,8 @@ REPORT="no"
 PROG="yes"
 RTYPE="req,lat,io"
 RPOST='${I_TEST}'
-VERIFY='meta'
+VERIFY="meta"
+BE_GENTLE="hellno"
 
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
@@ -78,6 +79,8 @@ while [[ -n $1 ]]; do
 		SEED=$1
 	elif [[ $1 = '--filed' ]]; then
 		USE_FILED="yes"
+	elif [[ $1 = '--gentle' ]]; then
+		BE_GENTLE="yes"
 	elif [[ $1 = '-v' ]]; then
 		shift
 		VERBOSITY=$1
@@ -143,12 +146,13 @@ BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS}
 		-mo ${FIN_CACHE_OBJECTS} -ts ${FIN_CACHE_SIZE}
+		--dirty_threshold 0
 		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
 FILED_COMMAND='${FILED_BIN} -g posix:cached: -p 0 -t ${T_FILED}
 		-v ${VERBOSITY}
 		--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
-		--prefix bench-{$SEED}-
+		--prefix bench-${SEED}-
 		-l ${LOG_FOLDER}/filed${I_TEST}.log'
 
 SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p 0 -t ${T_SOSD} -v ${VERBOSITY}
@@ -304,6 +308,12 @@ for USE_CACHED in $USE_CACHED_VALS; do
 		wait ${PID}
 	done
 	grn_echo "DONE!"
+
+	# Wait for cached to exit normally, before nuking the segment
+	if [[ $BE_GENTLE == "yes" ]]; then
+		killall archip-cached
+		wait $PID_CACHED
+	fi
 
 	# Since cached's termination has not been solved yet, we
 	# have to resort to weapons of mass destruction
