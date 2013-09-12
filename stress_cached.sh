@@ -144,7 +144,7 @@ BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${FIN_BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
 		--ping yes --progress ${PROG} --rtype ${RTYPE}
-		--verify $VERIFY ${RC} -l ${LOG_FOLDER}/${BENCH_LOG} ${RES}'
+		--verify $VERIFY ${RC} ${RES} -l ${LOG_FOLDER}/${BENCH_LOG}'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS}
@@ -304,6 +304,14 @@ for USE_CACHED in $USE_CACHED_VALS; do
 		echo -n "Restarting cached... "
 		killall archip-cached
 		wait $PID_CACHED
+		EXIT_CODE=$?
+
+		# Throw error if failed
+		if [[ $EXIT_CODE -gt 0 ]]; then
+			red_echo "FAILED (error: $EXIT_CODE)"
+			exit
+		fi
+
 		run_background "${CACHED_COMMAND}"
 		PID_CACHED=$!
 		grn_echo "DONE!"
