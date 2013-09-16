@@ -149,7 +149,7 @@ BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS}
 		-mo ${FIN_CACHE_OBJECTS} -ts ${FIN_CACHE_SIZE}
-		--dirty_threshold 0
+		--dirty_threshold 75
 		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
 FILED_COMMAND='${FILED_BIN} -g posix:cached: -p 0 -t ${T_FILED}
@@ -333,7 +333,8 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	grn_echo "DONE!"
 
 	# Wait for cached to exit normally, before nuking the segment
-	if [[ $BE_GENTLE == "yes" ]]; then
+	if [[ $BE_GENTLE == "yes" ]] &&
+		[[ $USE_CACHED == "yes" ]]; then
 		killall archip-cached
 		wait $PID_CACHED
 	fi
