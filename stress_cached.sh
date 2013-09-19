@@ -143,13 +143,13 @@ create_seed $SEED
 BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
 		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${FIN_BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
-		--ping yes --progress ${PROG} --rtype ${RTYPE}
+		--ping yes --progress ${PROG} --rtype ${RTYPE} --cpus 1
 		--verify $VERIFY ${RC} ${RES} -l ${LOG_FOLDER}/${BENCH_LOG}'
 
 CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS}
 		-mo ${FIN_CACHE_OBJECTS} -ts ${FIN_CACHE_SIZE}
-		--dirty_threshold 75
+		--dirty_threshold 0 --cpus 3,5
 		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
 FILED_COMMAND='${FILED_BIN} -g posix:cached: -p 0 -t ${T_FILED}
@@ -159,7 +159,7 @@ FILED_COMMAND='${FILED_BIN} -g posix:cached: -p 0 -t ${T_FILED}
 		-l ${LOG_FOLDER}/filed${I_TEST}.log'
 
 SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p 0 -t ${T_SOSD} -v ${VERBOSITY}
-		--pool ${SOSD_POOL}
+		--pool ${SOSD_POOL} --cpus 7
 		-l ${LOG_FOLDER}/sosd${I_TEST}.log'
 
 if [[ $USE_FILED == "yes" ]]; then
@@ -255,6 +255,8 @@ for USE_CACHED in $USE_CACHED_VALS; do
 		fi
 		PID_CACHED=$!
 	fi
+	#taskset -p -c 5 ${PID_CACHED}
+	#taskset -p ${PID_CACHED}
 	# Wait a bit to make sure both cached and chosen storage is up
 	sleep 1
 
