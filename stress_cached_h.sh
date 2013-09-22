@@ -1,5 +1,7 @@
 #! /bin/bash
 
+PEERS="bench cached filed sosd synapsed_c synapsed_s"
+
 #####################
 # Helper functions #
 #####################
@@ -16,8 +18,10 @@ usage() {
 	echo "                     permitted: ${HOME}/* or /tmp/*"
 	echo "         -r <path>:  activate bench reports and store them in "
 	echo "                     this path"
+	echo "         -ra <addr>: remote address of synapsed"
 	echo "         -prog <p>:  choose progress type"
 	echo "         -rtype <t>: choose report type"
+	echo "         -stype <t>: choose synapsed type [client|sever]"
 	echo "         -rpost <p>: use this postfix for reports before '.log'"
 	echo "         -test <i>:  run only test <i>"
 	echo "         -ff <i>:    fast-forward to test <i>, run every test"
@@ -27,7 +31,7 @@ usage() {
 	echo "         -bench <p>: define number of bench instances"
 	echo "         -seed <n>:  use <n> as a seed for the test (9-digits"
 	echo "                     only)"
-	echo "         --filed:    use filed instead of sosd for storage"
+	echo "         --filed:    use filed instead of sosd for blocker"
 	echo "         --gentle:   wait for cached to exit before nuking xseg"
 	echo "         --restart:  restart cached before reading from it"
 	echo "         -v <l>:     set verbosity level to <l>"
@@ -70,6 +74,8 @@ usage() {
 	echo ""
 }
 
+
+
 is_path_safe() {
 	if [[ ! $1 == ${HOME}* ]] &&
 		[[ ! $1 == "/tmp"* ]]; then
@@ -78,6 +84,79 @@ is_path_safe() {
 	return 0
 }
 
+# Both functions expect a word of phrase and they echo it back in
+# lowercase or uppercase
+to_uppercase() {
+	echo $@ | tr '[a-z]' '[A-Z]'
+}
+
+to_lowercase() {
+	echo $@ | tr '[A-Z]' '[a-z]'
+}
+
+# Expects a peer name($1) and a yes or no ($2)
+use_peer() {
+	local peer
+	local peer_use
+
+	peer=$( to_uppercase $1 )
+	peer_use="USE_${peer}"
+	eval ${peer_use}=$2
+}
+
+# FIXME: The below will not work with a multi-bench test
+init_topology() {
+	local peer
+	local use_peer
+
+	for peer in $PEERS; do
+		use_peer $peer no
+	done
+
+	BENCH_PORT=2
+	CACHED_PORT=1
+	SOSD_PORT=0
+	FILED_PORT=10
+	SYNAPSED_C_PORT=9
+	SYNAPSED_S_PORT=6
+}
+
+create_topology() {
+	local peer
+	local topology
+	local target
+	local target_var
+	local target_port
+	local i=0
+	local next
+	local prev
+
+	init_topology
+
+	topology=$( echo ${TOPOLOGY_VALS} | sed 's/->/\ /g' )
+
+	for peer in $topology; do
+		i=$(( $i + 1 ))
+		prev=$(( $i - 1 ))
+		next=$(( $i + 1 ))
+
+		use_peer $peer yes
+
+		if [[ $peer == "filed" || $peer == "sosd" ]]; then
+			return
+		elif [[ $peer == "synapsed_c" ]]; then
+			target=$(echo ${topology} | cut -d " " -f ${prev})
+		else
+			target=$(echo ${topology} | cut -d " " -f ${next})
+		fi
+
+		peer=$( to_uppercase $peer )
+		target=$( to_uppercase $target )
+		target_var="${peer}_TARGET"
+		target_port="${target}_PORT"
+		eval ${target_var}=${!target_port}
+	done
+}
 
 init_binaries_and_folders() {
 	PITHOS_FOLDER=${ARCH_SCRIPTS}/pithos/pithos
@@ -94,6 +173,7 @@ init_binaries_and_folders() {
 	CACHED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-cached"
 	FILED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-filed"
 	SOSD_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-sosd"
+	SYNAPSED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-synapsed"
 
 	# Create necessary folders
 	mkdir -p ${LOG_FOLDER}
@@ -120,7 +200,8 @@ override_test_options() {
 init_logs() {
 	local peer
 
-	for peer in bench-warmup bench-write bench-read cached $STORAGE; do
+	for peer in bench-warmup bench-write bench-read \
+		cached sosd filed synapsed-client synapsed-server; do
 		LOG=${LOG_FOLDER}/"${peer}"${1}".log"
 
 		# Truncate previous logs
@@ -140,7 +221,6 @@ parse_args() {
 		T_SOSD=1
 		T_FILED=64
 		T_CACHED=${1}
-		T_BENCH=1
 	else
 		red_echo "${1} is not a valid thread option"
 		exit
@@ -181,7 +261,7 @@ parse_args() {
 
 	# ${5} shows if cached is used in this test.
 	# If cached is not used, unset "next" ports for bench, so that requests
-	# can go directly to storage.
+	# can go directly to blocker.
 	if [[ $5 == "no" ]]; then
 		restore_bench_ports
 	fi
@@ -251,39 +331,43 @@ create_seed() {
 #    each line.
 # 5) Finally, the output is fed for one last time to sed, which removes the
 #    backslash from the last line (the line with the (#) character.
+print_command() {
+	eval "echo "$(eval "echo "$(eval "echo "${1}""#"")) \
+		| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
+}
+
 print_test() {
-	local echo=echo
-	local shade_text
-	local unshade_text
-	if [[ $USE_CACHED == "no" ]]; then
-		shade_text=shade_text
-		restore_text=restore_text
-	fi
+	local peer
+	local peer_command
+	local peer_use
 
 	echo ""
 	grn_echo "Summary of Test ${I_TEST} (SEED ${SEED}):"
-	echo "WCP=${WCP} THREADS=${THREADS} IODEPTH=${IODEPTH}"
-	$shade_text
-	echo -n "CACHE_OBJECTS=${FIN_CACHE_OBJECTS}($ORIG_CACHE_OBJECTS) "
-	echo "CACHE_SIZE=${FIN_CACHE_SIZE}(${ORIG_CACHE_SIZE})"
-	$restore_text
-	echo -n "BENCH_OBJECTS=${BENCH_OBJECTS} BENCH_SIZE=${FIN_BENCH_SIZE}"
-	echo "(${ORIG_BENCH_SIZE}) BLOCK_SIZE=${BLOCK_SIZE}"
-	grn_echo "-------------------------------------------------------"
 
-	for P in ${BENCH_PORTS}; do
-		eval "echo "$(eval "echo "$(eval "echo "${BENCH_COMMAND}""#"")) \
-			| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
+	if [[ $USE_BENCH == "yes" ]]; then
+		echo -n "BENCH_OBJECTS=${BENCH_OBJECTS} "
+		echo -n "BENCH_SIZE=${FIN_BENCH_SIZE}(${ORIG_BENCH_SIZE}) "
+		echo "BLOCK_SIZE=${BLOCK_SIZE}"
+		echo "IODEPTH=${IODEPTH}"
+	fi
+
+	if [[ $USE_CACHED == "yes" ]]; then
+		echo -n "CACHE_OBJECTS=${FIN_CACHE_OBJECTS}($ORIG_CACHE_OBJECTS) "
+		echo "CACHE_SIZE=${FIN_CACHE_SIZE}(${ORIG_CACHE_SIZE})"
+		echo "WCP=${WCP} THREADS=${THREADS}"
+	fi
+
+	grn_echo -n "-------------------------------------------------------"
+	for peer in $PEERS; do
+		peer=$( to_uppercase $peer )
+
+		peer_use="USE_${peer}"
+		if [[ ${!peer_use} == no ]]; then continue; fi
+
+		peer_command="${peer}_COMMAND"
 		echo ""
+		print_command "${!peer_command}"
 	done
-	$shade_text
-	eval "echo "${CACHED_COMMAND}""#"" \
-		| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
-	echo ""
-	$restore_text
-	eval "echo "${STORAGE_COMMAND}""#"" \
-		| fmt -t -w 54 | sed -e 's/$/ \\/g' | sed -e 's/\# \\$//g'
-
 	grn_echo "-------------------------------------------------------"
 	echo ""
 }
@@ -332,11 +416,12 @@ nuke_xseg() {
 	killall -9 archip-cached
 	killall -9 archip-filed
 	killall -9 archip-sosd
+	killall -9 archip-synapsed
 
 	# Re-build segment
 	eval $XSEG_BIN posix:cached:16:1024:12 destroy create
 	for P in $BENCH_PORTS; do
-		eval $XSEG_BIN posix:cached: set-next ${P} 1
+		eval $XSEG_BIN posix:cached: set-next ${P} ${BENCH_TARGET_PORT}
 	done
 	restore_output
 
@@ -346,7 +431,7 @@ nuke_xseg() {
 restore_bench_ports() {
 	suppress_output
 	for P in $BENCH_PORTS; do
-		eval $XSEG_BIN posix:cached: set-next ${P} 0
+		eval $XSEG_BIN posix:cached: set-next ${P} ${BENCH_TARGET_PORT}
 	done
 	restore_output
 }
@@ -361,7 +446,7 @@ run_profile_background() {
 
 read_prompt () {
 	while true; do
-		read -rn 1 -p "Run this test? [Y]es,[S]kip,[Q]uit: "
+		read -rn 1 -p "Run this test? [Y]es (default), [S]kip, [Q]uit: "
 		echo ""
 		if [[ ( -z $REPLY || $REPLY =~ ^[Yy]$ ) ]]; then
 			SKIP=1

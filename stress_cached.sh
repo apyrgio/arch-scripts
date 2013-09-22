@@ -21,16 +21,16 @@ PROFILE=1
 I=0
 WAIT=0
 BENCH_OP=write
-USE_FILED="no"
-USE_CACHED="yes"
 WARMUP="no"
 REPORT="no"
 PROG="yes"
 RTYPE="req,lat,io"
+STYPE="no"
 RPOST='${I_TEST}'
 VERIFY="meta"
 BE_GENTLE="hellno"
 RESTART_CACHED="no"
+TOPOLOGY_VALS="bench->cached->sosd"
 
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
@@ -54,6 +54,9 @@ while [[ -n $1 ]]; do
 	elif [[ $1 = '-rtype' ]]; then
 		shift
 		RTYPE=$1
+	elif [[ $1 = '-stype' ]]; then
+		shift
+		STYPE=$1
 	elif [[ $1 = '-rpost' ]]; then
 		shift
 		RPOST=$1
@@ -78,8 +81,6 @@ while [[ -n $1 ]]; do
 	elif [[ $1 = '-seed' ]]; then
 		shift
 		SEED=$1
-	elif [[ $1 = '--filed' ]]; then
-		USE_FILED="yes"
 	elif [[ $1 = '--gentle' ]]; then
 		BE_GENTLE="yes"
 	elif [[ $1 = '--restart' ]]; then
@@ -120,7 +121,11 @@ if [[ -n $FF && -n $UNTIL && $FLIMIT -gt $ULIMIT ]]; then
 	exit
 fi
 
-create_bench_ports
+########################
+# Initialize topology #
+########################
+
+create_topology
 
 ############################
 # Clean all previous tries #
@@ -140,42 +145,47 @@ if [[ $CLEAN ]]; then exit; fi
 
 create_seed $SEED
 
-BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${P} -tp 0
-		-v ${VERBOSITY} --seed ${SEED} -op ${BENCH_OP} --pattern rand
+BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${BENCH_PORT}
+		-tp ${BENCH_TARGET} -v ${VERBOSITY}
+		--seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${FIN_BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
-		--ping yes --progress ${PROG} --rtype ${RTYPE} --cpus 1
+		--ping yes --progress ${PROG} --rtype ${RTYPE}
 		--verify $VERIFY ${RC} ${RES} -l ${LOG_FOLDER}/${BENCH_LOG}'
 
-CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p 1 -bp 0 -t ${T_CACHED}
+CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p ${CACHED_PORT}
+		-bp ${CACHED_TARGET} -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS}
 		-mo ${FIN_CACHE_OBJECTS} -ts ${FIN_CACHE_SIZE}
-		--dirty_threshold 0 --cpus 3,5
+		--dirty_threshold 75
 		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
-FILED_COMMAND='${FILED_BIN} -g posix:cached: -p 0 -t ${T_FILED}
-		-v ${VERBOSITY}
+FILED_COMMAND='${FILED_BIN} -g posix:cached: -p vadsgdg ${FILED_PORT}
+		-t ${T_FILED} -v ${VERBOSITY}
 		--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
 		--prefix bench-${SEED}-
 		-l ${LOG_FOLDER}/filed${I_TEST}.log'
 
-SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p 0 -t ${T_SOSD} -v ${VERBOSITY}
-		--pool ${SOSD_POOL} --cpus 7
+SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p ${SOSD_PORT}
+		-t ${T_SOSD} -v ${VERBOSITY}
+		--pool ${SOSD_POOL}
 		-l ${LOG_FOLDER}/sosd${I_TEST}.log'
 
-if [[ $USE_FILED == "yes" ]]; then
-	STORAGE_COMMAND=$FILED_COMMAND
-	STORAGE="filed"
-else
-	STORAGE_COMMAND=$SOSD_COMMAND
-	STORAGE="sosd"
-fi
+SYNAPSED_C_COMMAND='${SYNAPSED_BIN} -g posix:cached: -p ${SYNAPSED_C_PORT}
+		-v ${VERBOSITY} -ra ${REMOTE_ADDR} -txp ${SYNAPSED_C_TARGET}
+		-hp 1134 -rp 3704
+		-l ${LOG_FOLDER}/synapsed-client${I_TEST}.log'
+
+SYNAPSED_S_COMMAND='${SYNAPSED_BIN} -g posix:cached: -p ${SYNAPSED_S_PORT}
+		-v ${VERBOSITY} -ra ${REMOTE_ADDR} -txp ${SYNAPSED_S_TARGET}
+		-rp 1134 -hp 3704
+		-l ${LOG_FOLDER}/synapsed-server${I_TEST}.log'
 
 ###########################
 # Initialize test options #
 ###########################
 
 TEST_OPTIONS='WCP CACHE_OBJECTS CACHE_SIZE IODEPTH THREADS
-	BENCH_OBJECTS BENCH_SIZE BLOCK_SIZE USE_CACHED'
+	BENCH_OBJECTS BENCH_SIZE BLOCK_SIZE TOPOLOGY'
 
 WCP_VALS="writeback writethrough"
 CACHE_OBJECTS_VALS="4 16 64 512"
@@ -185,7 +195,7 @@ THREADS_VALS="1 2 4"
 BENCH_OBJECTS_VALS="bounded holyshit"
 BENCH_SIZE_VALS="co/4 co/2 co*1 co*1.5"
 BLOCK_SIZE_VALS="4k 8k 32k 128k 256k 1M 4M"
-USE_CACHED_VALS="yes no"
+TOPOLOGY_VALS="bench->cached->sosd synapsed_s->filed"
 
 # Check if the user has provided his own values for a test option
 override_test_options
@@ -212,7 +222,7 @@ for THREADS in $THREADS_VALS; do
 for BENCH_OBJECTS in $BENCH_OBJECTS_VALS; do
 for BENCH_SIZE in $BENCH_SIZE_VALS; do
 for BLOCK_SIZE in $BLOCK_SIZE_VALS; do
-for USE_CACHED in $USE_CACHED_VALS; do
+for TOPOLOGY in $TOPOLOGY_VALS; do
 
 	I=$(( $I+1 ))
 
@@ -230,6 +240,7 @@ for USE_CACHED in $USE_CACHED_VALS; do
 
 	# Make test-specific initializations
 	I_TEST=$I
+	create_topology
 	init_logs ${I_TEST}
 	BENCH_LOG_OP=write
 	parse_args $THREADS $CACHE_OBJECTS $CACHE_SIZE \
@@ -242,9 +253,22 @@ for USE_CACHED in $USE_CACHED_VALS; do
 		if [[ $SKIP == 0 ]]; then continue; fi
 	fi
 
-	# Start chosen storage
-	run_background "${STORAGE_COMMAND}"
-	PID_STORAGE=$!
+	# FIXME: Shorten this
+	if [[ $USE_FILED == "yes" ]]; then
+		run_background "${FILED_COMMAND}"
+	fi
+
+	if [[ $USE_SOSD == "yes" ]]; then
+		run_background "${SOSD_COMMAND}"
+	fi
+
+	if [[ $USE_SYNAPSED_S == "yes" ]]; then
+		run_background "${SYNAPSED_S_COMMAND}"
+	fi
+
+	if [[ $USE_SYNAPSED_C == "yes" ]]; then
+		run_background "${SYNAPSED_C_COMMAND}"
+	fi
 
 	# Start cached
 	if [[ $USE_CACHED == "yes" ]]; then
@@ -255,39 +279,34 @@ for USE_CACHED in $USE_CACHED_VALS; do
 		fi
 		PID_CACHED=$!
 	fi
-	#taskset -p -c 5 ${PID_CACHED}
-	#taskset -p ${PID_CACHED}
-	# Wait a bit to make sure both cached and chosen storage is up
+
+	# Wait a bit to make sure both cached and chosen blocker is up
 	sleep 1
 
 	# Start bench (warmup mode)
 	if [[ ($WARMUP == "yes") ]]; then
 		BENCH_LOG_OP=warmup
 		BENCH_OP=write
-		PID_BENCH=""
-		for P in ${BENCH_PORTS}; do
-			run_background "${BENCH_COMMAND}"
-			PID_BENCH=${PID_BENCH}" $!"
-		done
+
+		run_background "${BENCH_COMMAND}"
+		PID_BENCH=$!
+
 		echo -n "Waiting for bench to finish the warm-up... "
-		for PID in ${PID_BENCH}; do
-			wait ${PID}
-		done
+		wait ${PID_BENCH}
+
 		grn_echo "DONE!"
 	fi
 
 	# Start bench (write mode)
 	BENCH_LOG_OP=write
 	BENCH_OP=write
-	PID_BENCH=""
-	for P in ${BENCH_PORTS}; do
-		run_background "${BENCH_COMMAND}"
-		PID_BENCH=${PID_BENCH}" $!"
-	done
+
+	run_background "${BENCH_COMMAND}"
+	PID_BENCH=$!
+
 	echo -n "Waiting for bench to finish writing... "
-	for PID in ${PID_BENCH}; do
-		wait ${PID}
-	done
+	wait ${PID_BENCH}
+
 	grn_echo "DONE!"
 
 	# If we profile cached, we don't want to kill -9 it since the profile
@@ -323,11 +342,10 @@ for USE_CACHED in $USE_CACHED_VALS; do
 	# Start bench (read mode)
 	BENCH_LOG_OP=read
 	BENCH_OP=read
-	PID_BENCH=""
-	for P in ${BENCH_PORTS}; do
-		run_background "${BENCH_COMMAND}"
-		PID_BENCH=${PID_BENCH}" $!"
-	done
+
+	run_background "${BENCH_COMMAND}"
+	PID_BENCH=$!
+
 	echo -n "Waiting for bench to finish reading... "
 	for PID in ${PID_BENCH}; do
 		wait ${PID}
