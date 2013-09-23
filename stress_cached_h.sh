@@ -21,17 +21,14 @@ usage() {
 	echo "         -ra <addr>: remote address of synapsed"
 	echo "         -prog <p>:  choose progress type"
 	echo "         -rtype <t>: choose report type"
-	echo "         -stype <t>: choose synapsed type [client|sever]"
 	echo "         -rpost <p>: use this postfix for reports before '.log'"
 	echo "         -test <i>:  run only test <i>"
 	echo "         -ff <i>:    fast-forward to test <i>, run every test"
 	echo "                     from there on"
 	echo "         -until <i>: run every test until AND test <i>"
 	echo "         -verify <m>:set verification mode <m> for bench"
-	echo "         -bench <p>: define number of bench instances"
 	echo "         -seed <n>:  use <n> as a seed for the test (9-digits"
 	echo "                     only)"
-	echo "         --filed:    use filed instead of sosd for blocker"
 	echo "         --gentle:   wait for cached to exit before nuking xseg"
 	echo "         --restart:  restart cached before reading from it"
 	echo "         -v <l>:     set verbosity level to <l>"
@@ -121,6 +118,8 @@ init_topology() {
 	SYNAPSED_S_PORT=6
 }
 
+# Reads a topology and then assign peers to ports, marks them as used and takes
+# care of their interconnections
 create_topology() {
 	local peer
 	local topology
@@ -133,7 +132,7 @@ create_topology() {
 
 	init_topology
 
-	topology=$( echo ${TOPOLOGY_VALS} | sed 's/->/\ /g' )
+	topology=$( echo ${1} | sed 's/->/\ /g' )
 
 	for peer in $topology; do
 		i=$(( $i + 1 ))

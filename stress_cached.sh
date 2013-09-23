@@ -31,6 +31,7 @@ VERIFY="meta"
 BE_GENTLE="hellno"
 RESTART_CACHED="no"
 TOPOLOGY_VALS="bench->cached->sosd"
+RADDR=$( hostname -f )
 
 while [[ -n $1 ]]; do
 	if [[ $1 = '-l' ]]; then
@@ -48,15 +49,15 @@ while [[ -n $1 ]]; do
 			exit
 		fi
 		REP_FOLDER=$1
+	elif [[ $1 = '-ra' ]]; then
+		shift
+		RADDR=$1
 	elif [[ $1 = '-prog' ]]; then
 		shift
 		PROG=$1
 	elif [[ $1 = '-rtype' ]]; then
 		shift
 		RTYPE=$1
-	elif [[ $1 = '-stype' ]]; then
-		shift
-		STYPE=$1
 	elif [[ $1 = '-rpost' ]]; then
 		shift
 		RPOST=$1
@@ -75,9 +76,6 @@ while [[ -n $1 ]]; do
 	elif [[ $1 = '-verify' ]]; then
 		shift
 		VERIFY=$1
-	elif [[ $1 = '-bench' ]]; then
-		shift
-		BENCH_INSTANCES=$1
 	elif [[ $1 = '-seed' ]]; then
 		shift
 		SEED=$1
@@ -171,12 +169,12 @@ SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p ${SOSD_PORT}
 		-l ${LOG_FOLDER}/sosd${I_TEST}.log'
 
 SYNAPSED_C_COMMAND='${SYNAPSED_BIN} -g posix:cached: -p ${SYNAPSED_C_PORT}
-		-v ${VERBOSITY} -ra ${REMOTE_ADDR} -txp ${SYNAPSED_C_TARGET}
+		-v ${VERBOSITY} -ra ${RADDR} -txp ${SYNAPSED_C_TARGET}
 		-hp 1134 -rp 3704
 		-l ${LOG_FOLDER}/synapsed-client${I_TEST}.log'
 
 SYNAPSED_S_COMMAND='${SYNAPSED_BIN} -g posix:cached: -p ${SYNAPSED_S_PORT}
-		-v ${VERBOSITY} -ra ${REMOTE_ADDR} -txp ${SYNAPSED_S_TARGET}
+		-v ${VERBOSITY} -ra ${RADDR} -txp ${SYNAPSED_S_TARGET}
 		-rp 1134 -hp 3704
 		-l ${LOG_FOLDER}/synapsed-server${I_TEST}.log'
 
@@ -238,9 +236,10 @@ for TOPOLOGY in $TOPOLOGY_VALS; do
 		fi
 	fi
 
+	create_topology $TOPOLOGY
+
 	# Make test-specific initializations
 	I_TEST=$I
-	create_topology
 	init_logs ${I_TEST}
 	BENCH_LOG_OP=write
 	parse_args $THREADS $CACHE_OBJECTS $CACHE_SIZE \
@@ -284,7 +283,8 @@ for TOPOLOGY in $TOPOLOGY_VALS; do
 	sleep 1
 
 	# Start bench (warmup mode)
-	if [[ ($WARMUP == "yes") ]]; then
+	if [[ $USE_BENCH == "yes" ]] &&
+		[[ ($WARMUP == "yes") ]]; then
 		BENCH_LOG_OP=warmup
 		BENCH_OP=write
 
@@ -298,16 +298,18 @@ for TOPOLOGY in $TOPOLOGY_VALS; do
 	fi
 
 	# Start bench (write mode)
-	BENCH_LOG_OP=write
-	BENCH_OP=write
+	if [[ $USE_BENCH == "yes" ]]; then
+		BENCH_LOG_OP=write
+		BENCH_OP=write
 
-	run_background "${BENCH_COMMAND}"
-	PID_BENCH=$!
+		run_background "${BENCH_COMMAND}"
+		PID_BENCH=$!
 
-	echo -n "Waiting for bench to finish writing... "
-	wait ${PID_BENCH}
+		echo -n "Waiting for bench to finish writing... "
+		wait ${PID_BENCH}
 
-	grn_echo "DONE!"
+		grn_echo "DONE!"
+	fi
 
 	# If we profile cached, we don't want to kill -9 it since the profile
 	# data won't be written. We simply send a SIGTERM and wait a second
@@ -339,18 +341,20 @@ for TOPOLOGY in $TOPOLOGY_VALS; do
 		sleep 1
 	fi
 
-	# Start bench (read mode)
-	BENCH_LOG_OP=read
-	BENCH_OP=read
+	if [[ $USE_BENCH == "yes" ]]; then
+		# Start bench (read mode)
+		BENCH_LOG_OP=read
+		BENCH_OP=read
 
-	run_background "${BENCH_COMMAND}"
-	PID_BENCH=$!
+		run_background "${BENCH_COMMAND}"
+		PID_BENCH=$!
 
-	echo -n "Waiting for bench to finish reading... "
-	for PID in ${PID_BENCH}; do
-		wait ${PID}
-	done
-	grn_echo "DONE!"
+		echo -n "Waiting for bench to finish reading... "
+		for PID in ${PID_BENCH}; do
+			wait ${PID}
+		done
+		grn_echo "DONE!"
+	fi
 
 	# Wait for cached to exit normally, before nuking the segment
 	if [[ $BE_GENTLE == "yes" ]] &&
