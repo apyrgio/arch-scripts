@@ -159,7 +159,7 @@ CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p ${CACHED_PORT}
 		--dirty_threshold 75
 		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
-FILED_COMMAND='${FILED_BIN} -g posix:cached: -p vadsgdg ${FILED_PORT}
+FILED_COMMAND='${FILED_BIN} -g posix:cached: -p ${FILED_PORT}
 		-t ${T_FILED} -v ${VERBOSITY}
 		--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
 		--prefix bench-${SEED}-

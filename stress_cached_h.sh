@@ -420,14 +420,12 @@ nuke_xseg() {
 
 	# Re-build segment
 	eval $XSEG_BIN posix:cached:16:1024:12 destroy create
-	for P in $BENCH_PORTS; do
-		eval $XSEG_BIN posix:cached: set-next ${P} ${BENCH_TARGET_PORT}
-	done
 	restore_output
 
 	grn_echo "DONE!"
 }
 
+# TODO: This no longer works
 restore_bench_ports() {
 	suppress_output
 	for P in $BENCH_PORTS; do
