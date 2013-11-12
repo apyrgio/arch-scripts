@@ -9,12 +9,13 @@ ARCH_SCRIPTS=$(dirname "$(readlink /proc/$$/fd/255)")
 
 #Include helper scripts
 source $ARCH_SCRIPTS/init.sh
-source $ARCH_SCRIPTS/stress_cached_h.sh
+source $ARCH_SCRIPTS/stress_xseg_h.sh
 
 ##################
 # Read arguments #
 ##################
 
+SEGMENT="posix:stress:16:1024:12"
 VERBOSITY=1
 BENCH_INSTANCES=1
 PROFILE=1
@@ -34,7 +35,10 @@ TOPOLOGY_VALS="bench->cached->sosd"
 RADDR=$( hostname -f )
 
 while [[ -n $1 ]]; do
-	if [[ $1 = '-l' ]]; then
+	if [[ $1 = '-g' ]]; then
+		shift
+		SEGMENT=$1
+	elif [[ $1 = '-l' ]]; then
 		shift
 		if ! is_path_safe $1; then
 			red_echo "-l ${1}: Log path is unsafe"
@@ -143,37 +147,37 @@ if [[ $CLEAN ]]; then exit; fi
 
 create_seed $SEED
 
-BENCH_COMMAND='${BENCH_BIN} -g posix:cached: -p ${BENCH_PORT}
+BENCH_COMMAND='${BENCH_BIN} -g ${SEGMENT}: -p ${BENCH_PORT}
 		-tp ${BENCH_TARGET} -v ${VERBOSITY}
 		--seed ${SEED} -op ${BENCH_OP} --pattern rand
 		-ts ${FIN_BENCH_SIZE} -bs ${BLOCK_SIZE} --iodepth ${IODEPTH}
 		--ping yes --progress ${PROG} --rtype ${RTYPE}
 		--verify $VERIFY ${RC} ${RES} -l ${LOG_FOLDER}/${BENCH_LOG}'
 
-CACHED_COMMAND='${CACHED_BIN} -g posix:cached: -p ${CACHED_PORT}
+CACHED_COMMAND='${CACHED_BIN} -g ${SEGMENT}: -p ${CACHED_PORT}
 		-bp ${CACHED_TARGET} -t ${T_CACHED}
 		-v ${VERBOSITY} -wcp ${WCP} -n ${NR_OPS}
 		-mo ${FIN_CACHE_OBJECTS} -ts ${FIN_CACHE_SIZE}
 		--dirty_threshold 75
 		-l ${LOG_FOLDER}/cached${I_TEST}.log'
 
-FILED_COMMAND='${FILED_BIN} -g posix:cached: -p ${FILED_PORT}
+FILED_COMMAND='${FILED_BIN} -g ${SEGMENT}: -p ${FILED_PORT}
 		-t ${T_FILED} -v ${VERBOSITY}
 		--pithos ${PITHOS_FOLDER} --archip ${ARCHIP_FOLDER}
 		--prefix bench-${SEED}-
 		-l ${LOG_FOLDER}/filed${I_TEST}.log'
 
-SOSD_COMMAND='${SOSD_BIN} -g posix:cached: -p ${SOSD_PORT}
+SOSD_COMMAND='${SOSD_BIN} -g ${SEGMENT}: -p ${SOSD_PORT}
 		-t ${T_SOSD} -v ${VERBOSITY}
 		--pool ${SOSD_POOL}
 		-l ${LOG_FOLDER}/sosd${I_TEST}.log'
 
-SYNAPSED_C_COMMAND='${SYNAPSED_BIN} -g posix:cached: -p ${SYNAPSED_C_PORT}
+SYNAPSED_C_COMMAND='${SYNAPSED_BIN} -g ${SEGMENT}: -p ${SYNAPSED_C_PORT}
 		-v ${VERBOSITY} -ra ${RADDR} -txp ${SYNAPSED_C_TARGET}
 		-hp 1134 -rp 3704
 		-l ${LOG_FOLDER}/synapsed-client${I_TEST}.log'
 
-SYNAPSED_S_COMMAND='${SYNAPSED_BIN} -g posix:cached: -p ${SYNAPSED_S_PORT}
+SYNAPSED_S_COMMAND='${SYNAPSED_BIN} -g ${SEGMENT}: -p ${SYNAPSED_S_PORT}
 		-v ${VERBOSITY} -ra ${RADDR} -txp ${SYNAPSED_S_TARGET}
 		-rp 1134 -hp 3704
 		-l ${LOG_FOLDER}/synapsed-server${I_TEST}.log'

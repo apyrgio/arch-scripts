@@ -7,13 +7,14 @@ PEERS="bench cached filed sosd synapsed_c synapsed_s"
 #####################
 
 usage() {
-	echo "Usage: ./stress_cached [-l <path>] [-r <path>]"
+	echo "Usage: ./stress_xseg [-g <seg>] [-l <path>] [-r <path>]"
 	echo "                       [-prog <p>] [-rtype <t>]"
 	echo "                       [-test <i>] [-ff <i>] [-until <i>]"
 	echo "                       [-bench <p>] [-seed <n>]"
 	echo "                       [-v <i>] [-p <n>] [-y] [-c] [-h]"
 	echo ""
-	echo "Options: -l <path>:  store logs in this path"
+	echo "Options: -g <seg>:   use this XSEG segment"
+	echo "         -l <path>:  store logs in this path"
 	echo "                     default: ${ARCH_SCRIPTS}/log/stress_cached"
 	echo "                     permitted: ${HOME}/* or /tmp/*"
 	echo "         -r <path>:  activate bench reports and store them in "
@@ -46,7 +47,7 @@ usage() {
 	echo "  stress_cached will iterate the list of tests and pause between "
 	echo "  each one so that the user can take a look at the logs."
 	echo ""
-	echo "* If the user has not given a seed, stress_cached will pick a random "
+	echo "* If the user has not given a seed, stress_xseg will pick a random "
 	echo "  seed value."
 	echo ""
 	echo "* The -ff and -until options can be used together to run tests"
@@ -56,7 +57,7 @@ usage() {
 	echo "  that they will wait in a different port."
 	echo ""
 	echo "* An easy way to check out the output would be to start 3 terminals"
-	echo "  and simply have them do: tail -F /var/log/stress_cached/cached*"
+	echo "  and simply have them do: tail -F /var/log/stress_xseg/cached*"
 	echo "  (or bench*, filed*). Thus, when a file is rm'ed or a new file"
 	echo "  with the same prefix has been added, tail will read it and you won't"
 	echo "  have to do anything."
@@ -67,7 +68,7 @@ usage() {
 	echo "  value of FORCE_* is used to override the pre-defined option"
 	echo "  values."
 	echo ""
-	echo "  e.g. FORCE_BLOCK_SIZE='4k 666k' ./stress_cached.sh"
+	echo "  e.g. FORCE_BLOCK_SIZE='4k 666k' ./stress_xseg.sh"
 	echo ""
 }
 
@@ -161,7 +162,7 @@ init_binaries_and_folders() {
 	PITHOS_FOLDER=${ARCH_SCRIPTS}/pithos/pithos
 	ARCHIP_FOLDER=${ARCH_SCRIPTS}/pithos/archip
 	if [[ -z $LOG_FOLDER ]]; then
-		LOG_FOLDER=${ARCH_SCRIPTS}/log/stress_cached
+		LOG_FOLDER=${ARCH_SCRIPTS}/log/stress_xseg
 	fi
 
 	SOSD_POOL=cached-blocks
@@ -418,7 +419,7 @@ nuke_xseg() {
 	killall -9 archip-synapsed
 
 	# Re-build segment
-	eval $XSEG_BIN posix:cached:16:1024:12 destroy create
+	eval $XSEG_BIN $SEGMENT destroy create
 	restore_output
 
 	grn_echo "DONE!"
@@ -428,7 +429,7 @@ nuke_xseg() {
 restore_bench_ports() {
 	suppress_output
 	for P in $BENCH_PORTS; do
-		eval $XSEG_BIN posix:cached: set-next ${P} ${BENCH_TARGET_PORT}
+		eval $XSEG_BIN $SEGMENT set-next ${P} ${BENCH_TARGET_PORT}
 	done
 	restore_output
 }
