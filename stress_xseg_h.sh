@@ -1,6 +1,6 @@
 #! /bin/bash
 
-PEERS="bench cached filed sosd synapsed_c synapsed_s"
+PEERS="bench cached filed sosd glusterd synapsed_c synapsed_s"
 
 #####################
 # Helper functions #
@@ -117,6 +117,7 @@ init_topology() {
 	FILED_PORT=10
 	SYNAPSED_C_PORT=9
 	SYNAPSED_S_PORT=6
+	GLUSTERD_PORT=3
 }
 
 # Reads a topology and then assign peers to ports, marks them as used and takes
@@ -142,7 +143,8 @@ create_topology() {
 
 		use_peer $peer yes
 
-		if [[ $peer == "filed" || $peer == "sosd" ]]; then
+		if [[ $peer == "filed" || $peer == "sosd" ||
+			$peer == glusterd ]]; then
 			return
 		elif [[ $peer == "synapsed_c" ]]; then
 			target=$(echo ${topology} | cut -d " " -f ${prev})
@@ -166,6 +168,7 @@ init_binaries_and_folders() {
 	fi
 
 	SOSD_POOL=cached-blocks
+	GLUSTERD_VOLUME=gv0
 
 	LD_PRELOAD_PATH="LD_PRELOAD=${XSEG}/sys/user/libxseg.so"
 	XSEG_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/xseg"
@@ -173,6 +176,7 @@ init_binaries_and_folders() {
 	CACHED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-cached"
 	FILED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-filed"
 	SOSD_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-sosd"
+	GLUSTERD_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-glusterd"
 	SYNAPSED_BIN="${LD_PRELOAD_PATH} ${XSEG}/peers/user/archip-synapsed"
 
 	# Create necessary folders
@@ -201,7 +205,7 @@ init_logs() {
 	local peer
 
 	for peer in bench-warmup bench-write bench-read \
-		cached sosd filed synapsed-client synapsed-server; do
+		cached sosd glusterd filed synapsed-client synapsed-server; do
 		LOG=${LOG_FOLDER}/"${peer}"${1}".log"
 
 		# Truncate previous logs
@@ -219,6 +223,7 @@ parse_args() {
 	# ${1} is for threads
 	if [[ ${1} -gt 0 ]]; then
 		T_SOSD=1
+		T_GLUSTERD=1
 		T_FILED=64
 		T_CACHED=${1}
 	else
@@ -416,6 +421,7 @@ nuke_xseg() {
 	killall -9 archip-cached
 	killall -9 archip-filed
 	killall -9 archip-sosd
+	killall -9 archip-glusterd
 	killall -9 archip-synapsed
 
 	# Re-build segment

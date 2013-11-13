@@ -182,6 +182,11 @@ SYNAPSED_S_COMMAND='${SYNAPSED_BIN} -g ${SEGMENT}: -p ${SYNAPSED_S_PORT}
 		-rp 1134 -hp 3704
 		-l ${LOG_FOLDER}/synapsed-server${I_TEST}.log'
 
+GLUSTERD_COMMAND='${GLUSTERD_BIN} -g ${SEGMENT}: -p ${GLUSTERD_PORT}
+		-t ${T_GLUSTERD} -v ${VERBOSITY}
+		--volume ${GLUSTERD_VOLUME}
+		-l ${LOG_FOLDER}/glusterd${I_TEST}.log'
+
 ###########################
 # Initialize test options #
 ###########################
@@ -195,7 +200,7 @@ CACHE_SIZE_VALS="co*2 co*1 co/2"
 IODEPTH_VALS="1 16"
 THREADS_VALS="1 2 4"
 BENCH_OBJECTS_VALS="bounded holyshit"
-BENCH_SIZE_VALS="co/4 co/2 co*1 co*1.5"
+BENCH_SIZE_VALS="co/4 co/2 co co*1.5"
 BLOCK_SIZE_VALS="4k 8k 32k 128k 256k 1M 4M"
 TOPOLOGY_VALS="bench->cached->sosd synapsed_s->filed"
 
@@ -271,6 +276,10 @@ for TOPOLOGY in $TOPOLOGY_VALS; do
 
 	if [[ $USE_SYNAPSED_C == "yes" ]]; then
 		run_background "${SYNAPSED_C_COMMAND}"
+	fi
+
+	if [[ $USE_GLUSTERD == "yes" ]]; then
+		run_background "${GLUSTERD_COMMAND}"
 	fi
 
 	# Start cached
